@@ -2666,20 +2666,23 @@ function redzlib:MakeWindow(Configs)
 			local TPlaceholderText = Configs[5] or Configs.PlaceholderText or "Input"
 			local TClearText = Configs[3] or Configs.ClearText or false
 			local Callback = Funcs:GetCallback(Configs, 4)
-			
+			local Mod = Configs.Mod
+
 			if type(TDefault) ~= "string" or TDefault:gsub(" ", ""):len() < 1 then
 				TDefault = false
 			end
-			
+
 			local Button, LabelFunc = ButtonFrame(Container, TName, TDesc, UDim2.new(1, -38))
-			
+
 			local SelectedFrame = InsertTheme(Create("Frame", Button, {
 				Size = UDim2.new(0, 150, 0, 18),
 				Position = UDim2.new(1, -10, 0.5),
 				AnchorPoint = Vector2.new(1, 0.5),
 				BackgroundColor3 = Theme["Color Stroke"]
-			}), "Stroke")Make("Corner", SelectedFrame, UDim.new(0, 4))
-			
+			}), "Stroke")
+
+			Make("Corner", SelectedFrame, UDim.new(0, 4))
+
 			local TextBoxInput = InsertTheme(Create("TextBox", SelectedFrame, {
 				Size = UDim2.new(0.85, 0, 0.85, 0),
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -2692,7 +2695,7 @@ function redzlib:MakeWindow(Configs)
 				PlaceholderText = TPlaceholderText,
 				Text = ""
 			}), "Text")
-			
+
 			local Pencil = Create("ImageLabel", SelectedFrame, {
 				Size = UDim2.new(0, 12, 0, 12),
 				Position = UDim2.new(0, -5, 0.5),
@@ -2700,29 +2703,128 @@ function redzlib:MakeWindow(Configs)
 				Image = "rbxassetid://15637081879",
 				BackgroundTransparency = 1
 			})
-			
+
 			local TextBox = {}
+			TextBox.OnChanging = false
+
+			local function ApplyMod(Text)
+				if type(Mod) == "function" then
+					local Result = Mod(Text)
+
+					if type(Result) == "string" then
+						return Result
+					end
+
+					return Text
+				end
+
+				if type(Mod) ~= "table" then
+					return Text
+				end
+
+				local Space = Mod.Space ~= false
+				local Number = Mod.Number ~= false
+				local Letter = Mod.Letter ~= false
+				local Result = {}
+
+				for i = 1, #Text do
+					local Character = Text:sub(i, i)
+
+					if Character:match("%a") then
+						if Letter then
+							Result[#Result + 1] = Character
+						end
+					elseif Character:match("%d") then
+						if Number then
+							Result[#Result + 1] = Character
+						end
+					elseif Character == " " then
+						if Space then
+							Result[#Result + 1] = Character
+						end
+					else
+						if Mod.Symbol then
+							Result[#Result + 1] = Character
+						end
+					end
+				end
+
+				return table.concat(Result)
+			end
+
 			local function Input()
 				local Text = TextBoxInput.Text
+
 				if Text:gsub(" ", ""):len() > 0 then
-					if TextBox.OnChanging then Text = TextBox.OnChanging(Text) or Text end
+					if Mod ~= nil then
+						Text = ApplyMod(Text)
+						TextBoxInput.Text = Text
+					end
+
+					if TextBox.OnChanging then
+						Text = TextBox.OnChanging(Text) or Text
+					end
+
 					Funcs:FireCallback(Callback, Text)
 					TextBoxInput.Text = Text
 				end
 			end
-			
-			TextBoxInput.FocusLost:Connect(Input)Input()
-			
+
+			TextBoxInput.FocusLost:Connect(Input)
+			Input()
+
 			TextBoxInput.FocusLost:Connect(function()
-				CreateTween({Pencil, "ImageColor3", Color3.fromRGB(255, 255, 255), 0.2})
+				CreateTween({
+					Pencil,
+					"ImageColor3",
+					Color3.fromRGB(255, 255, 255),
+					0.2
+				})
 			end)
+
 			TextBoxInput.Focused:Connect(function()
-				CreateTween({Pencil, "ImageColor3", Theme["Color Theme"], 0.2})
+				CreateTween({
+					Pencil,
+					"ImageColor3",
+					Theme["Color Theme"],
+					0.2
+				})
 			end)
-			
-			TextBox.OnChanging = false
-			function TextBox:Visible(...) Funcs:ToggleVisible(Button, ...) end
-			function TextBox:Destroy() Button:Destroy() end
+
+			function TextBox:Get()
+				return TextBoxInput.Text
+			end
+
+			function TextBox:Set(Text)
+				if type(Text) ~= "string" then
+					return
+				end
+
+				TextBoxInput.Text = Text
+				Input()
+			end
+
+			function TextBox:Callback(Func)
+				if type(Func) ~= "function" then
+					return
+				end
+
+				Callback = Func
+			end
+
+			function TextBox:Mod(NewMod)
+				Mod = NewMod
+				Input()
+			end
+
+			function TextBox:Visible(...)
+				Funcs:ToggleVisible(Button, ...)
+			end
+
+			function TextBox:Destroy()
+				Button:Destroy()
+			end
+
 			return TextBox
 		end
 		function Tab:AddDiscordInvite(Configs)
