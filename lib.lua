@@ -1399,33 +1399,6 @@ function redzlib:GetTransparency()
     return nil
 end
 
-function redzlib:GetVisibility()
-    local mf = redzlib.MainFrame
-    if mf then
-        return mf.Visible
-    end
-
-    return nil
-end
-
-function redzlib:GetTitle()
-    local title = redzlib.Title
-    if title then
-        return title.Text
-    end
-
-    return nil
-end
-
-function redzlib:GetSubTitle()
-    local sub = redzlib.SubTitle
-    if sub then
-        return sub.Text
-    end
-
-    return nil
-end
-
 function redzlib:SetTheme(NewTheme)
 	if not VerifyTheme(NewTheme) then return end
 	
@@ -1516,39 +1489,6 @@ end
 function redzlib:SetScale(NewScale)
 	NewScale = ViewportSize.Y / math.clamp(NewScale, 300, 2000)
 	UIScale, ScreenGui.Scale.Scale = NewScale, NewScale
-end
-
-function redzlib:SetTitle(NewTitle)
-    if type(NewTitle) ~= "string" then
-        return
-    end
-
-    local title = redzlib.Title
-    if title then
-        title.Text = NewTitle
-    end
-end
-
-function redzlib:SetSubTitle(NewSubTitle)
-    if type(NewSubTitle) ~= "string" then
-        return
-    end
-
-    local sub = redzlib.SubTitle
-    if sub then
-        sub.Text = NewSubTitle
-    end
-end
-
-function redzlib:SetVisibility(NewVisibility)
-    if type(NewVisibility) ~= "boolean" then
-        return
-    end
-
-    local mf = redzlib.MainFrame
-    if mf then
-        mf.Visible = NewVisibility
-    end
 end
 
 function redzlib:MakeWindow(Configs)
@@ -1763,8 +1703,43 @@ function redzlib:MakeWindow(Configs)
 		
 		WaitClick = false
 	end
+    function Window:SetTitle(NewTitle)
+        if type(NewTitle) ~= "string" then
+            return
+        end
+
+        Title.Text = NewTitle
+    end
+
+    function Window:SetSubTitle(NewSubTitle)
+        if type(NewSubTitle) ~= "string" then
+            return
+        end
+
+        Title.SubTitle.Text = NewSubTitle
+    end
+
+    function Window:GetTitle()
+        return Title.Text
+    end
+
+    function Window:GetSubTitle()
+        return Title.SubTitle.Text
+    end
+
+    function Window:SetVisibility(NewVisibility)
+        if type(NewVisibility) ~= "boolean" then
+            return
+        end
+
+        MainFrame.Visible = NewVisibility
+    end
+
+    function Window:GetVisibility()
+        return MainFrame.Visible
+    end
 	function Window:Minimize()
-		MainFrame.Visible = not MainFrame.Visible
+		Window:SetVisibility(not Window:GetVisibility())
 	end
 	function Window:AddMinimizeButton(Configs)
 		local Button = MakeDrag(Create("ImageButton", ScreenGui, {
