@@ -2725,6 +2725,7 @@ function redzlib:MakeWindow(Configs)
 				local Space = Mod.Space ~= false
 				local Number = Mod.Number ~= false
 				local Letter = Mod.Letter ~= false
+				local Symbol = Mod.Symbol == true
 				local Result = {}
 
 				for i = 1, #Text do
@@ -2743,7 +2744,7 @@ function redzlib:MakeWindow(Configs)
 							Result[#Result + 1] = Character
 						end
 					else
-						if Mod.Symbol then
+						if Symbol then
 							Result[#Result + 1] = Character
 						end
 					end
@@ -2752,15 +2753,12 @@ function redzlib:MakeWindow(Configs)
 				return table.concat(Result)
 			end
 
+			local Changing = false
+
 			local function Input()
 				local Text = TextBoxInput.Text
 
 				if Text:gsub(" ", ""):len() > 0 then
-					if Mod ~= nil then
-						Text = ApplyMod(Text)
-						TextBoxInput.Text = Text
-					end
-
 					if TextBox.OnChanging then
 						Text = TextBox.OnChanging(Text) or Text
 					end
@@ -2769,6 +2767,25 @@ function redzlib:MakeWindow(Configs)
 					TextBoxInput.Text = Text
 				end
 			end
+
+			TextBoxInput:GetPropertyChangedSignal("Text"):Connect(function()
+				if Changing then
+					return
+				end
+
+				if Mod == nil then
+					return
+				end
+
+				local Text = TextBoxInput.Text
+				local NewText = ApplyMod(Text)
+
+				if Text ~= NewText then
+					Changing = true
+					TextBoxInput.Text = NewText
+					Changing = false
+				end
+			end)
 
 			TextBoxInput.FocusLost:Connect(Input)
 			Input()
@@ -2814,7 +2831,6 @@ function redzlib:MakeWindow(Configs)
 
 			function TextBox:Mod(NewMod)
 				Mod = NewMod
-				Input()
 			end
 
 			function TextBox:Visible(...)
