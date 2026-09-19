@@ -2192,35 +2192,23 @@ function redzlib:MakeWindow(Configs)
 			local DMultiSelect = Configs.MultiSelect or false
 			local DMultiLine = Configs.MultiLine or false
 			local DMultiOptions = Configs.MultiOptions or {}
-
-			--// Search Config
-			local SearchConfig = {
-				Enabled = Configs.Search or false,
-
-				Placeholder = "Pesquisar...",
-				TextSize = 11,
-				MinTextSize = 8,
-
-				SearchFrameHeight = 21,
-				SearchFrameOffset = 5,
-
-				IconSize = 12,
-				IconPosition = 6,
-
-				InputOffset = 23,
-
-				NoResultText = "Nenhuma opção encontrada",
-				NoResultTextSize = 9,
-
-				-- true = pesquisa pelo começo do nome
-				-- false = pesquisa em qualquer parte do nome
-				PrefixOnly = true
-			}
-
-			local DSearch = SearchConfig.Enabled
+			local DSearch = Configs.Search or false
 			local Callback = Funcs:GetCallback(Configs, 4)
 
-			local TextService = game:GetService("TextService")
+			local SearchConfig = {
+				Enabled = DSearch,
+				Placeholder = Configs.SearchConfig and Configs.SearchConfig.Placeholder or "Pesquisar...",
+				TextSize = Configs.SearchConfig and Configs.SearchConfig.TextSize or 11,
+				MinTextSize = Configs.SearchConfig and Configs.SearchConfig.MinTextSize or 8,
+				SearchFrameHeight = Configs.SearchConfig and Configs.SearchConfig.SearchFrameHeight or 21,
+				SearchFrameOffset = Configs.SearchConfig and Configs.SearchConfig.SearchFrameOffset or 5,
+				IconSize = Configs.SearchConfig and Configs.SearchConfig.IconSize or 12,
+				IconPosition = Configs.SearchConfig and Configs.SearchConfig.IconPosition or 6,
+				InputOffset = Configs.SearchConfig and Configs.SearchConfig.InputOffset or 23,
+				NoResultText = Configs.SearchConfig and Configs.SearchConfig.NoResultText or "Nenhuma opção encontrada",
+				NoResultTextSize = Configs.SearchConfig and Configs.SearchConfig.NoResultTextSize or 9,
+				PrefixOnly = Configs.SearchConfig and Configs.SearchConfig.PrefixOnly ~= false
+			}
 
 			local Button, LabelFunc = ButtonFrame(Container, DName, DDesc, UDim2.new(1, -180))
 
@@ -2268,58 +2256,44 @@ function redzlib:MakeWindow(Configs)
 				ClipsDescendants = true,
 				Active = true
 			})
-
 			Make("Corner", DropFrame)
 			Make("Stroke", DropFrame)
-			Make("Gradient", DropFrame, {
-				Rotation = 60
-			})
+			Make("Gradient", DropFrame, {Rotation = 60})
 
-			--// Search
 			local SearchFrame
 			local SearchIcon
+			local SearchInputFrame
 			local SearchInput
 			local SearchMessage
+			local SearchResizePending = false
 
-			if DSearch then
+			if SearchConfig.Enabled then
 				SearchFrame = InsertTheme(Create("Frame", DropFrame, {
 					Size = UDim2.new(1, -16, 0, SearchConfig.SearchFrameHeight),
 					Position = UDim2.new(0, 8, 0, SearchConfig.SearchFrameOffset),
 					BackgroundColor3 = Theme["Color Hub 2"]
 				}), "Stroke")
-
 				Make("Corner", SearchFrame, UDim.new(0, 4))
 
 				SearchIcon = Create("ImageLabel", SearchFrame, {
-					Size = UDim2.fromOffset(
-						SearchConfig.IconSize,
-						SearchConfig.IconSize
-					),
-					Position = UDim2.new(
-						0,
-						SearchConfig.IconPosition,
-						0.5,
-						0
-					),
+					Size = UDim2.fromOffset(SearchConfig.IconSize, SearchConfig.IconSize),
+					Position = UDim2.new(0, SearchConfig.IconPosition, 0.5),
 					AnchorPoint = Vector2.new(0, 0.5),
 					BackgroundTransparency = 1,
 					Image = "rbxassetid://10734943674",
 					ImageColor3 = Theme["Color Dark Text"]
 				})
 
-				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
-					Size = UDim2.new(
-						1,
-						-(SearchConfig.InputOffset + 6),
-						1,
-						0
-					),
-					Position = UDim2.new(
-						0,
-						SearchConfig.InputOffset,
-						0,
-						0
-					),
+				SearchInputFrame = Create("Frame", SearchFrame, {
+					Size = UDim2.new(1, -27, 1, 0),
+					Position = UDim2.new(0, SearchConfig.InputOffset, 0, 0),
+					BackgroundTransparency = 1,
+					ClipsDescendants = true
+				})
+
+				SearchInput = InsertTheme(Create("TextBox", SearchInputFrame, {
+					Size = UDim2.new(1, -2, 1, 0),
+					Position = UDim2.new(0, 0, 0, 0),
 					BackgroundTransparency = 1,
 					ClearTextOnFocus = false,
 					Font = Enum.Font.GothamBold,
@@ -2331,7 +2305,7 @@ function redzlib:MakeWindow(Configs)
 					TextXAlignment = Enum.TextXAlignment.Left,
 					TextYAlignment = Enum.TextYAlignment.Center,
 					TextWrapped = false,
-					ClipsDescendants = true
+					ClipsDescendants = false
 				}), "Text")
 
 				SearchMessage = InsertTheme(Create("TextLabel", DropFrame, {
@@ -2342,22 +2316,75 @@ function redzlib:MakeWindow(Configs)
 					Text = SearchConfig.NoResultText,
 					TextColor3 = Theme["Color Dark Text"],
 					TextSize = SearchConfig.NoResultTextSize,
-					TextXAlignment = Enum.TextXAlignment.Center,
-					TextYAlignment = Enum.TextYAlignment.Center,
+					TextXAlignment = "Center",
+					TextYAlignment = "Center",
 					Visible = false,
 					ZIndex = 5
 				}), "Text")
 			end
 
+			local function UpdateSearchTextSize()
+				if not SearchConfig.Enabled or not SearchInput then
+					return
+				end
+
+				if SearchResizePending then
+					return
+				end
+
+				SearchResizePending = true
+
+				task.defer(function()
+					SearchResizePending = false
+
+					if not SearchInput or not SearchInput.Parent then
+						return
+					end
+
+					local Text = SearchInput.Text
+					local NewTextSize = SearchConfig.TextSize
+
+					if Text ~= "" then
+						local AvailableWidth = SearchInput.AbsoluteSize.X - 2
+
+						if AvailableWidth > 0 then
+							for Size = SearchConfig.TextSize, SearchConfig.MinTextSize, -0.25 do
+								local Bounds = TextService:GetTextSize(
+									Text,
+									Size,
+									SearchInput.Font,
+									Vector2.new(math.huge, math.huge)
+								)
+
+								if Bounds.X <= AvailableWidth then
+									NewTextSize = Size
+									break
+								end
+
+								NewTextSize = SearchConfig.MinTextSize
+							end
+						end
+					end
+
+					if SearchInput.TextSize ~= NewTextSize then
+						SearchInput.TextSize = NewTextSize
+					end
+				end)
+			end
+
+			if SearchInput then
+				SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+					UpdateSearchTextSize()
+				end)
+
+				SearchInput:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+					UpdateSearchTextSize()
+				end)
+			end
+
 			local ScrollFrame = InsertTheme(Create("ScrollingFrame", DropFrame, {
-				Size = DSearch
-					and UDim2.new(1, 0, 1, -30)
-					or UDim2.new(1, 0, 1, 0),
-
-				Position = DSearch
-					and UDim2.new(0, 0, 0, 30)
-					or UDim2.new(0, 0, 0, 0),
-
+				Size = SearchConfig.Enabled and UDim2.new(1, 0, 1, -30) or UDim2.new(1, 0, 1, 0),
+				Position = SearchConfig.Enabled and UDim2.new(0, 0, 0, 30) or UDim2.new(0, 0, 0, 0),
 				ScrollBarImageColor3 = Theme["Color Theme"],
 				ScrollBarThickness = 1.5,
 				BackgroundTransparency = 1,
@@ -2373,39 +2400,19 @@ function redzlib:MakeWindow(Configs)
 					PaddingTop = UDim.new(0, 5),
 					PaddingBottom = UDim.new(0, 5)
 				}),
-
 				Create("UIListLayout", {
 					Padding = UDim.new(0, 4)
 				})
 			}), "ScrollBar")
 
-			local ScrollSize = 5
-			local WaitClick = false
+			local ScrollSize, WaitClick = 5
 
 			local function Disable()
 				WaitClick = true
 
-				CreateTween({
-					Arrow,
-					"Rotation",
-					0,
-					0.2
-				})
-
-				CreateTween({
-					DropFrame,
-					"Size",
-					UDim2.new(0, 152, 0, 0),
-					0.2,
-					true
-				})
-
-				CreateTween({
-					Arrow,
-					"ImageColor3",
-					Color3.fromRGB(255, 255, 255),
-					0.2
-				})
+				CreateTween({Arrow, "Rotation", 0, 0.2})
+				CreateTween({DropFrame, "Size", UDim2.new(0, 152, 0, 0), 0.2, true})
+				CreateTween({Arrow, "ImageColor3", Color3.fromRGB(255, 255, 255), 0.2})
 
 				Arrow.Image = "rbxassetid://10709791523"
 				NoClickFrame.Visible = false
@@ -2432,18 +2439,13 @@ function redzlib:MakeWindow(Configs)
 
 				ScrollSize = (math.clamp(Count, 0, 10) * 25) + 10
 
-				if DSearch then
+				if SearchConfig.Enabled then
 					ScrollSize = ScrollSize + 30
 				end
 
 				if NoClickFrame.Visible then
-					CreateTween({
-						DropFrame,
-						"Size",
-						GetFrameSize(),
-						0.2,
-						true
-					})
+					NoClickFrame.Visible = true
+					CreateTween({DropFrame, "Size", GetFrameSize(), 0.2, true})
 				end
 			end
 
@@ -2456,41 +2458,18 @@ function redzlib:MakeWindow(Configs)
 
 				if NoClickFrame.Visible then
 					Arrow.Image = "rbxassetid://10709791523"
-
-					CreateTween({
-						Arrow,
-						"ImageColor3",
-						Color3.fromRGB(255, 255, 255),
-						0.2
-					})
-
-					CreateTween({
-						DropFrame,
-						"Size",
-						UDim2.new(0, 152, 0, 0),
-						0.2,
-						true
-					})
-
+					CreateTween({Arrow, "ImageColor3", Color3.fromRGB(255, 255, 255), 0.2})
+					CreateTween({DropFrame, "Size", UDim2.new(0, 152, 0, 0), 0.2, true})
 					NoClickFrame.Visible = false
 				else
 					NoClickFrame.Visible = true
 					Arrow.Image = "rbxassetid://10709790948"
+					CreateTween({Arrow, "ImageColor3", Theme["Color Theme"], 0.2})
+					CreateTween({DropFrame, "Size", GetFrameSize(), 0.2, true})
 
-					CreateTween({
-						Arrow,
-						"ImageColor3",
-						Theme["Color Theme"],
-						0.2
-					})
-
-					CreateTween({
-						DropFrame,
-						"Size",
-						GetFrameSize(),
-						0.2,
-						true
-					})
+					if SearchInput then
+						UpdateSearchTextSize()
+					end
 				end
 
 				WaitClick = false
@@ -2513,527 +2492,409 @@ function redzlib:MakeWindow(Configs)
 				)
 
 				local NewPos = UDim2.fromOffset(ClampX, ClampY)
-
-				local AnchorPoint =
-					FramePos.Y > ScreenSize.Y / 1.4
-					and 1
-					or ScrollSize > 80
-					and 0.5
-					or 0
+				local AnchorPoint = FramePos.Y > ScreenSize.Y / 1.4 and 1 or ScrollSize > 80 and 0.5 or 0
 
 				DropFrame.AnchorPoint = Vector2.new(0, AnchorPoint)
-
-				CreateTween({
-					DropFrame,
-					"Position",
-					NewPos,
-					0.1
-				})
+				CreateTween({DropFrame, "Position", NewPos, 0.1})
 			end
 
-			local Options = {}
-			local Selected
+			local AddNewOptions, GetOptions, AddOption, RemoveOption, Selected
 
-			local Default =
-				type(OpDefault) ~= "table"
-				and {OpDefault}
-				or OpDefault
+			do
+				local Default = type(OpDefault) ~= "table" and {OpDefault} or OpDefault
+				local MultiLine = DMultiLine
+				local MultiSelect = DMultiSelect or MultiLine
+				local MultiMax = tonumber(DMultiOptions.Max) or math.huge
+				local MultiMin = tonumber(DMultiOptions.Min) or 0
 
-			local MultiLine = DMultiLine
-			local MultiSelect = DMultiSelect or MultiLine
+				MultiMax = math.max(0, MultiMax)
+				MultiMin = math.max(0, MultiMin)
 
-			local MultiMax = tonumber(DMultiOptions.Max) or math.huge
-			local MultiMin = tonumber(DMultiOptions.Min) or 0
-
-			MultiMax = math.max(0, MultiMax)
-			MultiMin = math.max(0, MultiMin)
-
-			if MultiMax ~= math.huge and MultiMin > MultiMax then
-				MultiMin = MultiMax
-			end
-
-			if MultiSelect then
-				Selected = {}
-
-				local Saved = CheckFlag(Flag) and GetFlag(Flag)
-
-				if type(Saved) == "table" then
-					for Index, Value in pairs(Saved) do
-						if Value then
-							Selected[Index] = true
-						end
-					end
-				else
-					for _, Value in pairs(Default) do
-						if Value ~= nil then
-							Selected[Value] = true
-						end
-					end
-				end
-			else
-				Selected =
-					CheckFlag(Flag)
-					and GetFlag(Flag)
-					or Default[1]
-			end
-
-			local function GetSelectedCount()
-				local Count = 0
-
-				if not MultiSelect then
-					return 0
+				if MultiMax ~= math.huge and MultiMin > MultiMax then
+					MultiMin = MultiMax
 				end
 
-				for _, Value in pairs(Selected) do
-					if Value then
-						Count = Count + 1
-					end
-				end
+				Selected = MultiSelect and {} or CheckFlag(Flag) and GetFlag(Flag) or Default[1]
 
-				return Count
-			end
+				local Options = {}
 
-			local function UpdateLabel()
 				if MultiSelect then
-					local List = {}
+					local Saved = CheckFlag(Flag) and GetFlag(Flag) or nil
 
-					for Name, Value in pairs(Selected) do
+					if type(Saved) == "table" then
+						for Index, Value in pairs(Saved) do
+							if type(Index) == "string" and Value and (DOptions[Index] or table.find(DOptions, Index)) then
+								Selected[Index] = true
+							end
+						end
+					elseif type(Default) == "table" then
+						for _, Value in pairs(Default) do
+							if type(Value) == "string" and (DOptions[Value] or table.find(DOptions, Value)) then
+								Selected[Value] = true
+							end
+						end
+					end
+				end
+
+				local function GetSelectedCount()
+					local Count = 0
+
+					for _, Value in pairs(Selected) do
 						if Value then
-							table.insert(List, Name)
+							Count = Count + 1
 						end
 					end
 
-					if #List > 0 then
-						ActiveLabel.Text = table.concat(List, ", ")
-					else
-						ActiveLabel.Text = tostring(Default[1] or "...")
-					end
-				else
-					ActiveLabel.Text = Selected ~= nil
-						and tostring(Selected)
-						or tostring(Default[1] or "...")
+					return Count
 				end
-			end
 
-			local function UpdateSelected()
-				for _, Value in pairs(Options) do
-					local Nodes = Value.nodes
-
-					local IsActive
-
+				local function CallbackSelected()
 					if MultiSelect then
-						IsActive = Value.Stats
+						SetFlag(Flag, Selected)
+						Funcs:FireCallback(Callback, Selected)
 					else
-						IsActive = Value.Value == Selected
-					end
-
-					-- Indicador original:
-					-- selecionado = | visível
-					-- não selecionado = completamente invisível
-					CreateTween({
-						Nodes[2],
-						"BackgroundTransparency",
-						IsActive and 0 or 1,
-						0.35
-					})
-
-					CreateTween({
-						Nodes[2],
-						"Size",
-						IsActive
-							and UDim2.fromOffset(4, 14)
-							or UDim2.fromOffset(4, 4),
-						0.35
-					})
-
-					CreateTween({
-						Nodes[3],
-						"TextTransparency",
-						IsActive and 0 or 0.4,
-						0.35
-					})
-				end
-
-				UpdateLabel()
-			end
-
-			local function UpdateSearch()
-				if not DSearch or not SearchInput then
-					return
-				end
-
-				local SearchText = SearchInput.Text
-					:lower()
-					:gsub("^%s*(.-)%s*$", "%1")
-
-				local Found = false
-
-				for _, Value in pairs(Options) do
-					local OptionButton = Value.nodes[1]
-					local OptionName = Value.Name:lower()
-
-					local Match
-
-					if SearchText == "" then
-						Match = true
-					elseif SearchConfig.PrefixOnly then
-						Match = OptionName:sub(1, #SearchText) == SearchText
-					else
-						Match = OptionName:find(SearchText, 1, true) ~= nil
-					end
-
-					OptionButton.Visible = Match
-
-					if Match then
-						Found = true
+						SetFlag(Flag, Selected and tostring(Selected) or false)
+						Funcs:FireCallback(Callback, Selected)
 					end
 				end
 
-				SearchMessage.Visible =
-					SearchText ~= ""
-					and not Found
+				local function UpdateLabel()
+					if MultiSelect then
+						local List = {}
 
-				ScrollFrame.CanvasPosition = Vector2.new(0, 0)
-			end
-
-			local function UpdateSearchTextSize()
-				if not DSearch or not SearchInput then
-					return
-				end
-
-				local Text = SearchInput.Text
-
-				if Text == "" then
-					SearchInput.TextSize = SearchConfig.TextSize
-					return
-				end
-
-				local AvailableWidth = SearchInput.AbsoluteSize.X
-
-				if AvailableWidth <= 0 then
-					return
-				end
-
-				local CurrentSize = SearchConfig.TextSize
-
-				while CurrentSize > SearchConfig.MinTextSize do
-					local Bounds = TextService:GetTextSize(
-						Text,
-						CurrentSize,
-						SearchInput.Font,
-						Vector2.new(math.huge, math.huge)
-					)
-
-					if Bounds.X <= AvailableWidth then
-						break
-					end
-
-					CurrentSize = CurrentSize - 0.25
-				end
-
-				SearchInput.TextSize = math.max(
-					CurrentSize,
-					SearchConfig.MinTextSize
-				)
-			end
-
-			local function Select(Option)
-				if not Option then
-					return
-				end
-
-				if MultiSelect then
-					local CurrentCount = GetSelectedCount()
-
-					if Option.Stats then
-						if CurrentCount <= MultiMin then
-							return
+						for Name, Value in pairs(Selected) do
+							if Value then
+								table.insert(List, Name)
+							end
 						end
 
-						Option.Stats = false
-						Selected[Option.Name] = nil
+						ActiveLabel.Text = #List > 0 and table.concat(List, ", ") or tostring(Default[1] or "...")
 					else
-						if CurrentCount >= MultiMax then
-							return
-						end
-
-						Option.Stats = true
-						Selected[Option.Name] = true
-					end
-				else
-					if Selected == Option.Value then
-						Selected = nil
-					else
-						Selected = Option.Value
+						ActiveLabel.Text = Selected ~= nil and tostring(Selected) or tostring(Default[1] or "...")
 					end
 				end
 
-				if Flag then
-					SetFlag(Flag, Selected)
-				end
+				local function UpdateSelected()
+					for _, Value in pairs(Options) do
+						local Nodes = Value.nodes
+						local IsActive = MultiSelect and Value.Stats or Value.Value == Selected
 
-				Funcs:FireCallback(Callback, Selected)
+						CreateTween({
+							Nodes[2],
+							"BackgroundTransparency",
+							IsActive and 0 or 1,
+							0.35
+						})
 
-				UpdateSelected()
-			end
+						CreateTween({
+							Nodes[2],
+							"Size",
+							IsActive
+								and UDim2.fromOffset(4, 14)
+								or UDim2.fromOffset(4, 4),
+							0.35
+						})
 
-			local function AddOption(Index, Value)
-				local Name = tostring(
-					type(Index) == "string"
-					and Index
-					or Value
-				)
-
-				if Options[Name] then
-					return
-				end
-
-				local Option = {
-					index = Index,
-					Value = Value,
-					Name = Name,
-					Stats = false,
-					LastCB = 0
-				}
-
-				if MultiSelect then
-					Option.Stats = Selected[Name] == true
-				end
-
-				Options[Name] = Option
-
-				local OptionButton = Make("Button", ScrollFrame, {
-					Name = "Option",
-					Size = UDim2.new(1, 0, 0, 21),
-					Position = UDim2.new(0, 0, 0.5),
-					AnchorPoint = Vector2.new(0, 0.5)
-				})
-
-				Make("Corner", OptionButton, UDim.new(0, 4))
-
-				local IsSelected = InsertTheme(Create("Frame", OptionButton, {
-					Position = UDim2.new(0, 1, 0.5),
-					Size = UDim2.fromOffset(4, 4),
-					BackgroundColor3 = Theme["Color Theme"],
-					BackgroundTransparency = 1,
-					AnchorPoint = Vector2.new(0, 0.5)
-				}), "Theme")
-
-				Make("Corner", IsSelected, UDim.new(0.5, 0))
-
-				local OptionName = InsertTheme(Create("TextLabel", OptionButton, {
-					Size = UDim2.new(1, 0, 1, 0),
-					Position = UDim2.new(0, 10),
-					Text = Name,
-					TextColor3 = Theme["Color Text"],
-					Font = Enum.Font.GothamBold,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					BackgroundTransparency = 1,
-					TextTransparency = 0.4
-				}), "Text")
-
-				OptionButton.Activated:Connect(function()
-					Select(Options[Name])
-				end)
-
-				Option.nodes = {
-					OptionButton,
-					IsSelected,
-					OptionName
-				}
-
-				if DSearch then
-					UpdateSearch()
-				end
-			end
-
-			local function RemoveOption(Index, Value)
-				local Name = tostring(
-					type(Index) == "string"
-					and Index
-					or Value
-				)
-
-				local Option = Options[Name]
-
-				if not Option then
-					return
-				end
-
-				if MultiSelect then
-					Selected[Name] = nil
-				elseif Selected == Option.Value then
-					Selected = nil
-				end
-
-				if Option.nodes and Option.nodes[1] then
-					Option.nodes[1]:Destroy()
-				end
-
-				Options[Name] = nil
-
-				UpdateSelected()
-
-				if DSearch then
-					UpdateSearch()
-				end
-			end
-
-			local function AddNewOptions(List, Clear)
-				if Clear then
-					local RemoveList = {}
-
-					for Name, Value in pairs(Options) do
-						table.insert(RemoveList, {
-							Name = Name,
-							Value = Value.Value
+						CreateTween({
+							Nodes[3],
+							"TextTransparency",
+							IsActive and 0 or 0.4,
+							0.35
 						})
 					end
 
-					for _, Value in pairs(RemoveList) do
-						RemoveOption(Value.Name, Value.Value)
+					UpdateLabel()
+				end
+
+				local function UpdateSearch()
+					if not SearchConfig.Enabled or not SearchInput then
+						return
+					end
+
+					local SearchText = SearchInput.Text:lower():gsub("^%s*(.-)%s*$", "%1")
+					local Found = false
+
+					for _, Value in pairs(Options) do
+						local OptionButton = Value.nodes[1]
+						local OptionName = Value.Name:lower()
+
+						local Match
+
+						if SearchText == "" then
+							Match = true
+						elseif SearchConfig.PrefixOnly then
+							Match = OptionName:sub(1, #SearchText) == SearchText
+						else
+							Match = OptionName:find(SearchText, 1, true) ~= nil
+						end
+
+						OptionButton.Visible = Match
+
+						if Match then
+							Found = true
+						end
+					end
+
+					SearchMessage.Visible = SearchText ~= "" and not Found
+					ScrollFrame.CanvasPosition = Vector2.new(0, 0)
+
+					UpdateSearchTextSize()
+				end
+
+				local function Select(Option)
+					if not Option then
+						return
+					end
+
+					if MultiSelect then
+						local CurrentCount = GetSelectedCount()
+
+						if Option.Stats then
+							if CurrentCount <= MultiMin then
+								return
+							end
+
+							Option.Stats = false
+							Selected[Option.Name] = false
+						else
+							if CurrentCount >= MultiMax then
+								return
+							end
+
+							Option.Stats = true
+							Selected[Option.Name] = true
+						end
+
+						Option.LastCB = tick()
+						CallbackSelected()
+					else
+						if Selected == Option.Value then
+							Selected = nil
+						else
+							Selected = Option.Value
+						end
+
+						Option.LastCB = tick()
+						CallbackSelected()
+					end
+
+					UpdateSelected()
+				end
+
+				AddOption = function(Index, Value)
+					local Name = tostring(type(Index) == "string" and Index or Value)
+
+					if Options[Name] then
+						return
+					end
+
+					Options[Name] = {
+						index = Index,
+						Value = Value,
+						Name = Name,
+						Stats = false,
+						LastCB = 0
+					}
+
+					if MultiSelect then
+						local Stats = Selected[Name] == true
+						Selected[Name] = Stats
+						Options[Name].Stats = Stats
+					end
+
+					local OptionButton = Make("Button", ScrollFrame, {
+						Name = "Option",
+						Size = UDim2.new(1, 0, 0, 21),
+						Position = UDim2.new(0, 0, 0.5),
+						AnchorPoint = Vector2.new(0, 0.5)
+					})
+					Make("Corner", OptionButton, UDim.new(0, 4))
+
+					local IsSelected = InsertTheme(Create("Frame", OptionButton, {
+						Position = UDim2.new(0, 1, 0.5),
+						Size = UDim2.new(0, 4, 0, 4),
+						BackgroundColor3 = Theme["Color Theme"],
+						BackgroundTransparency = 1,
+						AnchorPoint = Vector2.new(0, 0.5)
+					}), "Theme")
+
+					Make("Corner", IsSelected, UDim.new(0.5, 0))
+
+					local OptioneName = InsertTheme(Create("TextLabel", OptionButton, {
+						Size = UDim2.new(1, 0, 1, 0),
+						Position = UDim2.new(0, 10),
+						Text = Name,
+						TextColor3 = Theme["Color Text"],
+						Font = Enum.Font.GothamBold,
+						TextXAlignment = "Left",
+						BackgroundTransparency = 1,
+						TextTransparency = 0.4
+					}), "Text")
+
+					OptionButton.Activated:Connect(function()
+						Select(Options[Name])
+					end)
+
+					Options[Name].nodes = {
+						OptionButton,
+						IsSelected,
+						OptioneName
+					}
+
+					if SearchConfig.Enabled then
+						UpdateSearch()
 					end
 				end
 
-				for Index, Value in pairs(List) do
+				RemoveOption = function(Index, Value)
+					local Name = tostring(type(Index) == "string" and Index or Value)
+
+					if Options[Name] then
+						if MultiSelect then
+							Selected[Name] = nil
+						else
+							Selected = nil
+						end
+
+						Options[Name].nodes[1]:Destroy()
+						table.clear(Options[Name])
+						Options[Name] = nil
+					end
+
+					UpdateSelected()
+
+					if SearchConfig.Enabled then
+						UpdateSearch()
+					end
+				end
+
+				GetOptions = function()
+					return Options
+				end
+
+				AddNewOptions = function(List, Clear)
+					if Clear then
+						local RemoveList = {}
+
+						for Name, Value in pairs(Options) do
+							table.insert(RemoveList, {
+								Name = Name,
+								Value = Value.Value
+							})
+						end
+
+						for _, Value in pairs(RemoveList) do
+							RemoveOption(Value.Name, Value.Value)
+						end
+					end
+
+					for Index, Value in pairs(List) do
+						AddOption(Index, Value)
+					end
+
+					CallbackSelected()
+					UpdateSelected()
+
+					if SearchConfig.Enabled then
+						UpdateSearch()
+					end
+				end
+
+				for Index, Value in pairs(DOptions) do
 					AddOption(Index, Value)
 				end
 
-				if Flag then
-					SetFlag(Flag, Selected)
-				end
-
-				Funcs:FireCallback(Callback, Selected)
-
+				CallbackSelected()
 				UpdateSelected()
 
-				if DSearch then
-					UpdateSearch()
-				end
-			end
-
-			for Index, Value in pairs(DOptions) do
-				AddOption(Index, Value)
-			end
-
-			Funcs:FireCallback(Callback, Selected)
-			UpdateSelected()
-
-			if DSearch then
-				SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
-					UpdateSearchTextSize()
-					UpdateSearch()
-				end)
-
-				SearchInput:GetPropertyChangedSignal("AbsoluteSize"):Connect(
-					UpdateSearchTextSize
-				)
-
-				task.defer(UpdateSearchTextSize)
-			end
-
-			local Dropdown = {}
-
-			function Dropdown:Visible(...)
-				Funcs:ToggleVisible(Button, ...)
-			end
-
-			function Dropdown:Destroy()
-				Button:Destroy()
-			end
-
-			function Dropdown:Callback(...)
-				Funcs:InsertCallback(Callback, ...)(Selected)
-			end
-
-			function Dropdown:Add(...)
-				local NewOptions = {...}
-
-				if type(NewOptions[1]) == "table" then
-					for Index, Name in pairs(NewOptions[1]) do
-						AddOption(Index, Name)
-					end
-				else
-					for _, Name in pairs(NewOptions) do
-						AddOption(Name, Name)
-					end
+				if SearchConfig.Enabled then
+					SearchInput:GetPropertyChangedSignal("Text"):Connect(UpdateSearch)
 				end
 
-				CalculateSize()
-				UpdateSelected()
+				local Dropdown = {}
 
-				if DSearch then
-					UpdateSearch()
-				end
-			end
-
-			function Dropdown:Remove(Option)
-				for Index, Value in pairs(Options) do
-					if (type(Option) == "number" and Index == Option)
-						or Value.Name == Option then
-
-						RemoveOption(Index, Value.Value)
-						break
-					end
+				function Dropdown:Visible(...)
+					Funcs:ToggleVisible(Button, ...)
 				end
 
-				CalculateSize()
-			end
+				function Dropdown:Destroy()
+					Button:Destroy()
+				end
 
-			function Dropdown:Select(Option)
-				if type(Option) == "string" then
-					for _, Value in pairs(Options) do
-						if Value.Name == Option then
-							Select(Value)
-							break
+				function Dropdown:Callback(...)
+					Funcs:InsertCallback(Callback, ...)(Selected)
+				end
+
+				function Dropdown:Add(...)
+					local NewOptions = {...}
+
+					if type(NewOptions[1]) == "table" then
+						for Index, Name in pairs(NewOptions[1]) do
+							AddOption(Index, Name)
+						end
+					else
+						for _, Name in pairs(NewOptions) do
+							AddOption(Name, Name)
 						end
 					end
-				elseif type(Option) == "number" then
-					for Index, Value in pairs(Options) do
-						if Index == Option then
-							Select(Value)
+
+					CalculateSize()
+					UpdateSelected()
+
+					if SearchConfig.Enabled then
+						UpdateSearch()
+					end
+				end
+
+				function Dropdown:Remove(Option)
+					for Index, Value in pairs(GetOptions()) do
+						if (type(Option) == "number" and Index == Option) or Value.Name == Option then
+							RemoveOption(Index, Value.Value)
 							break
 						end
 					end
 				end
-			end
 
-			function Dropdown:Set(Value, Clear)
-				if type(Value) == "table" then
-					AddNewOptions(Value, not Clear)
-				elseif type(Value) == "function" then
-					Callback = Value
+				function Dropdown:Select(Option)
+					if type(Option) == "string" then
+						for _, Value in pairs(GetOptions()) do
+							if Value.Name == Option then
+								Select(Value)
+								break
+							end
+						end
+					elseif type(Option) == "number" then
+						for Index, Value in pairs(GetOptions()) do
+							if Index == Option then
+								Select(Value)
+								break
+							end
+						end
+					end
 				end
-			end
 
-			function Dropdown:Get()
-				if MultiSelect then
-					return Selected
+				function Dropdown:Set(Val1, Clear)
+					if type(Val1) == "table" then
+						AddNewOptions(Val1, not Clear)
+					elseif type(Val1) == "function" then
+						Callback = Val1
+					end
 				end
 
-				return Selected
+				Button.Activated:Connect(Minimize)
+				NoClickFrame.MouseButton1Down:Connect(Disable)
+				NoClickFrame.MouseButton1Click:Connect(Disable)
+				MainFrame:GetPropertyChangedSignal("Visible"):Connect(Disable)
+				SelectedFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(CalculatePos)
+				Button.Activated:Connect(CalculateSize)
+				ScrollFrame.ChildAdded:Connect(CalculateSize)
+				ScrollFrame.ChildRemoved:Connect(CalculateSize)
+
+				CalculatePos()
+				CalculateSize()
+
+				return Dropdown
 			end
-
-			Button.Activated:Connect(Minimize)
-
-			NoClickFrame.MouseButton1Down:Connect(Disable)
-			NoClickFrame.MouseButton1Click:Connect(Disable)
-
-			MainFrame:GetPropertyChangedSignal("Visible"):Connect(Disable)
-
-			SelectedFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(
-				CalculatePos
-			)
-
-			Button.Activated:Connect(CalculateSize)
-
-			ScrollFrame.ChildAdded:Connect(CalculateSize)
-			ScrollFrame.ChildRemoved:Connect(CalculateSize)
-
-			CalculatePos()
-			CalculateSize()
-
-			return Dropdown
 		end
 		function Tab:AddSelector(Configs)
 			local SName = Configs[1] or Configs.Name or Configs.Title or "Selector"
