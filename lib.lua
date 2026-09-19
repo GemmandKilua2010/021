@@ -2533,55 +2533,86 @@ function redzlib:MakeWindow(Configs)
 			local SDefault = Configs[3] or Configs.Default or 1
 			local Callback = Funcs:GetCallback(Configs, 4)
 
+			if type(SOptions) ~= "table" or #SOptions == 0 then
+				return
+			end
+
 			local Button, LabelFunc = ButtonFrame(Container, SName, SDesc, UDim2.new(1, -180))
 
 			local SelectedFrame = InsertTheme(Create("Frame", Button, {
-				Size = UDim2.new(0, 150, 0, 18),
+				Size = UDim2.new(0, 150, 0, 22),
 				Position = UDim2.new(1, -10, 0.5),
 				AnchorPoint = Vector2.new(1, 0.5),
 				BackgroundColor3 = Theme["Color Stroke"]
-			}), "Stroke")Make("Corner", SelectedFrame, UDim.new(0, 4))
+			}), "Stroke")
 
-			local LeftButton = Create("ImageButton", SelectedFrame, {
-				Size = UDim2.new(0, 20, 1, 0),
-				Position = UDim2.new(0, 0, 0, 0),
+			Make("Corner", SelectedFrame, UDim.new(0, 5))
+
+			local LeftButton = Create("TextButton", SelectedFrame, {
+				Size = UDim2.fromOffset(22, 22),
+				Position = UDim2.new(0, 2, 0.5, 0),
+				AnchorPoint = Vector2.new(0, 0.5),
 				BackgroundTransparency = 1,
 				AutoButtonColor = false,
-				Image = "rbxassetid://10709791281"
-			})
-
-			local RightButton = Create("ImageButton", SelectedFrame, {
-				Size = UDim2.new(0, 20, 1, 0),
-				Position = UDim2.new(1, -20, 0, 0),
-				BackgroundTransparency = 1,
-				AutoButtonColor = false,
-				Image = "rbxassetid://10709791437"
+				Text = ""
 			})
 
 			local LeftHover = InsertTheme(Create("Frame", LeftButton, {
-				Size = UDim2.new(0, 18, 0, 18),
-				Position = UDim2.new(0.5, 0, 0.5, 0),
+				Size = UDim2.fromOffset(18, 18),
+				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundColor3 = Theme["Color Theme"],
 				BackgroundTransparency = 1
-			}), "Theme")Make("Corner", LeftHover, UDim.new(0, 4))
+			}), "Theme")
 
-			local RightHover = InsertTheme(Create("Frame", RightButton, {
-				Size = UDim2.new(0, 18, 0, 18),
-				Position = UDim2.new(0.5, 0, 0.5, 0),
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = Theme["Color Theme"],
-				BackgroundTransparency = 1
-			}), "Theme")Make("Corner", RightHover, UDim.new(0, 4))
+			Make("Corner", LeftHover, UDim.new(0, 4))
 
-			local ActiveLabel = InsertTheme(Create("TextLabel", SelectedFrame, {
-				Size = UDim2.new(1, -45, 0.85, 0),
-				Position = UDim2.new(0.5, 0, 0.5, 0),
+			local LeftArrow = InsertTheme(Create("ImageLabel", LeftButton, {
+				Size = UDim2.fromOffset(9, 9),
+				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Font = Enum.Font.GothamBold,
-				TextScaled = true,
+				Image = "rbxassetid://10709791281"
+			}), "Theme")
+
+			local RightButton = Create("TextButton", SelectedFrame, {
+				Size = UDim2.fromOffset(22, 22),
+				Position = UDim2.new(1, -2, 0.5, 0),
+				AnchorPoint = Vector2.new(1, 0.5),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Text = ""
+			})
+
+			local RightHover = InsertTheme(Create("Frame", RightButton, {
+				Size = UDim2.fromOffset(18, 18),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = Theme["Color Theme"],
+				BackgroundTransparency = 1
+			}), "Theme")
+
+			Make("Corner", RightHover, UDim.new(0, 4))
+
+			local RightArrow = InsertTheme(Create("ImageLabel", RightButton, {
+				Size = UDim2.fromOffset(9, 9),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Image = "rbxassetid://10709791437"
+			}), "Theme")
+
+			local ActiveLabel = InsertTheme(Create("TextLabel", SelectedFrame, {
+				Size = UDim2.new(1, -52, 1, 0),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.Gotham,
+				TextSize = 9,
 				TextColor3 = Theme["Color Theme"],
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextYAlignment = Enum.TextYAlignment.Center,
 				Text = "..."
 			}), "Theme")
 
@@ -2617,7 +2648,7 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			LeftButton.MouseEnter:Connect(function()
-				LeftHover.BackgroundTransparency = 0
+				LeftHover.BackgroundTransparency = 0.55
 			end)
 
 			LeftButton.MouseLeave:Connect(function()
@@ -2625,7 +2656,7 @@ function redzlib:MakeWindow(Configs)
 			end)
 
 			RightButton.MouseEnter:Connect(function()
-				RightHover.BackgroundTransparency = 0
+				RightHover.BackgroundTransparency = 0.55
 			end)
 
 			RightButton.MouseLeave:Connect(function()
@@ -2644,34 +2675,16 @@ function redzlib:MakeWindow(Configs)
 
 			local Selector = {}
 
-			function Selector:Visible(...)
-				Funcs:ToggleVisible(Button, ...)
-			end
-
-			function Selector:Destroy()
-				Button:Destroy()
-			end
-
-			function Selector:Callback(...)
-				Funcs:InsertCallback(Callback, ...)
-			end
-
-			function Selector:Set(Val1, Val2)
-				if type(Val1) == "string" and type(Val2) == "string" then
-					LabelFunc:SetTitle(Val1)
-					LabelFunc:SetDesc(Val2)
-				elseif type(Val1) == "string" then
-					for i, Value in ipairs(SOptions) do
-						if tostring(Value) == Val1 then
+			function Selector:Set(Value)
+				if type(Value) == "number" then
+					Select(Value)
+				elseif type(Value) == "string" then
+					for i, Option in ipairs(SOptions) do
+						if tostring(Option) == Value then
 							Select(i)
-							return
+							break
 						end
 					end
-					LabelFunc:SetTitle(Val1)
-				elseif type(Val1) == "number" then
-					Select(Val1)
-				elseif type(Val1) == "function" then
-					Callback = Val1
 				end
 			end
 
@@ -2689,6 +2702,22 @@ function redzlib:MakeWindow(Configs)
 
 			function Selector:Previous()
 				Select(Index - 1)
+			end
+
+			function Selector:Callback(Func)
+				if type(Func) ~= "function" then
+					return
+				end
+
+				Callback = Func
+			end
+
+			function Selector:Visible(...)
+				Funcs:ToggleVisible(Button, ...)
+			end
+
+			function Selector:Destroy()
+				Button:Destroy()
 			end
 
 			return Selector
