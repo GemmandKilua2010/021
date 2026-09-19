@@ -2568,7 +2568,7 @@ function redzlib:MakeWindow(Configs)
 			Make("Corner", LeftHover, UDim.new(0, 4))
 
 			local LeftArrow = InsertTheme(Create("ImageLabel", LeftButton, {
-				Size = UDim2.fromOffset(11, 11),
+				Size = UDim2.fromOffset(12, 12),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
@@ -2596,7 +2596,7 @@ function redzlib:MakeWindow(Configs)
 			Make("Corner", RightHover, UDim.new(0, 4))
 
 			local RightArrow = InsertTheme(Create("ImageLabel", RightButton, {
-				Size = UDim2.fromOffset(11, 11),
+				Size = UDim2.fromOffset(12, 12),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
@@ -2611,14 +2611,12 @@ function redzlib:MakeWindow(Configs)
 				BackgroundTransparency = 1,
 				Font = Enum.Font.GothamBold,
 				TextSize = 10,
-				TextColor3 = Theme["Color Theme"],
-				TextStrokeColor3 = Theme["Color Theme"],
-				TextStrokeTransparency = 0.8,
+				TextColor3 = Theme["Color Text"],
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,
 				Text = "..."
-			}), "Theme")
+			}), "Text")
 
 			local Index = 1
 
