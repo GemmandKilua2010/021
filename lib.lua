@@ -2261,7 +2261,7 @@ function redzlib:MakeWindow(Configs)
 					ImageColor3 = Theme["Color Dark Text"]
 				})
 				
-				local InputMaxCharacters = 30
+				local InputMaxCharacters = 15
 				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
 					Size = UDim2.new(1, -25, 1, 0),
 					Position = UDim2.new(0, 23, 0, 0),
