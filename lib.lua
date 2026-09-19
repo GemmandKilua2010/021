@@ -2526,6 +2526,198 @@ function redzlib:MakeWindow(Configs)
 			end
 			return Dropdown
 		end
+		function Tab:AddSelector(Configs)
+			local SName = Configs[1] or Configs.Name or Configs.Title or "Selector"
+			local SOptions = Configs[2] or Configs.Options or {}
+			local SDefault = Configs[3] or Configs.Default or 1
+			local Callback = Funcs:GetCallback(Configs, 4)
+
+			if type(SOptions) ~= "table" or #SOptions == 0 then
+				return
+			end
+
+			local Index = 1
+			if type(SDefault) == "number" then
+				Index = math.clamp(SDefault, 1, #SOptions)
+			elseif type(SDefault) == "string" then
+				for i, Value in ipairs(SOptions) do
+					if tostring(Value) == SDefault then
+						Index = i
+						break
+					end
+				end
+			end
+
+			local SelectorFrame = Create("Frame", Container, {
+				Size = UDim2.new(1, -20, 0, 56),
+				BackgroundColor3 = Theme["Color Hub 2"],
+				BackgroundTransparency = 0,
+				Name = "Option"
+			})
+			Make("Corner", SelectorFrame, UDim.new(0, 13))
+
+			local LeftButton = Create("ImageButton", SelectorFrame, {
+				Size = UDim2.fromOffset(32, 32),
+				Position = UDim2.new(0, 8, 0.5, 0),
+				AnchorPoint = Vector2.new(0, 0.5),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Image = "rbxassetid://10709791523",
+				Rotation = -90
+			})
+
+			local RightButton = Create("ImageButton", SelectorFrame, {
+				Size = UDim2.fromOffset(32, 32),
+				Position = UDim2.new(1, -8, 0.5, 0),
+				AnchorPoint = Vector2.new(1, 0.5),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Image = "rbxassetid://10709791523",
+				Rotation = 90
+			})
+
+			local LeftHover = Create("Frame", LeftButton, {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = Theme["Color Stroke"],
+				BackgroundTransparency = 1,
+				ZIndex = 0
+			})
+			Make("Corner", LeftHover, UDim.new(0, 8))
+
+			local RightHover = Create("Frame", RightButton, {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = Theme["Color Stroke"],
+				BackgroundTransparency = 1,
+				ZIndex = 0
+			})
+			Make("Corner", RightHover, UDim.new(0, 8))
+
+			local LeftArrow = InsertTheme(Create("ImageLabel", LeftButton, {
+				Size = UDim2.fromOffset(15, 15),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Image = "rbxassetid://10709791523",
+				Rotation = -90,
+				ZIndex = 2
+			}), "Theme")
+
+			local RightArrow = InsertTheme(Create("ImageLabel", RightButton, {
+				Size = UDim2.fromOffset(15, 15),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Image = "rbxassetid://10709791523",
+				Rotation = 90,
+				ZIndex = 2
+			}), "Theme")
+
+			local ValueLabel = InsertTheme(Create("TextLabel", SelectorFrame, {
+				Size = UDim2.new(1, -90, 0, 24),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamBold,
+				TextSize = 15,
+				TextColor3 = Theme["Color Theme"],
+				TextXAlignment = Enum.TextXAlignment.Center,
+				Text = ""
+			}), "Theme")
+
+			local function Update()
+				local Value = SOptions[Index]
+
+				ValueLabel.Text = string.format("%s  (%d/%d)", tostring(Value), Index, #SOptions)
+
+				Funcs:FireCallback(Callback, Value, Index)
+			end
+
+			local function SetIndex(NewIndex)
+				if type(NewIndex) ~= "number" then
+					return
+				end
+
+				NewIndex = math.clamp(math.floor(NewIndex), 1, #SOptions)
+
+				if NewIndex == Index then
+					return
+				end
+
+				Index = NewIndex
+				Update()
+			end
+
+			LeftButton.MouseEnter:Connect(function()
+				LeftHover.BackgroundTransparency = 0
+			end)
+
+			LeftButton.MouseLeave:Connect(function()
+				LeftHover.BackgroundTransparency = 1
+			end)
+
+			RightButton.MouseEnter:Connect(function()
+				RightHover.BackgroundTransparency = 0
+			end)
+
+			RightButton.MouseLeave:Connect(function()
+				RightHover.BackgroundTransparency = 1
+			end)
+
+			LeftButton.Activated:Connect(function()
+				SetIndex(Index - 1)
+			end)
+
+			RightButton.Activated:Connect(function()
+				SetIndex(Index + 1)
+			end)
+
+			local Selector = {}
+
+			function Selector:Set(Value)
+				if type(Value) == "number" then
+					SetIndex(Value)
+				elseif type(Value) == "string" then
+					for i, Option in ipairs(SOptions) do
+						if tostring(Option) == Value then
+							SetIndex(i)
+							break
+						end
+					end
+				end
+			end
+
+			function Selector:Get()
+				return SOptions[Index]
+			end
+
+			function Selector:GetIndex()
+				return Index
+			end
+
+			function Selector:Next()
+				SetIndex(Index + 1)
+			end
+
+			function Selector:Previous()
+				SetIndex(Index - 1)
+			end
+
+			function Selector:Callback(...)
+				Funcs:InsertCallback(Callback, ...)
+			end
+
+			function Selector:Visible(...)
+				Funcs:ToggleVisible(SelectorFrame, ...)
+			end
+
+			function Selector:Destroy()
+				SelectorFrame:Destroy()
+			end
+
+			Update()
+
+			return Selector
+		end	
 		function Tab:AddSlider(Configs)
 			local SName = Configs[1] or Configs.Name or Configs.Title or "Slider!"
 			local SDesc = Configs.Desc or Configs.Description or ""
