@@ -2605,11 +2605,12 @@ function redzlib:MakeWindow(Configs)
 					Make("Corner", IsSelected, UDim.new(0.5, 0))
 
 					local OptioneName = InsertTheme(Create("TextLabel", OptionButton, {
-						Size = UDim2.new(1, 0, 1, 0),
+						Size = UDim2.new(1, -15, 1, 0),
 						Position = UDim2.new(0, 10),
 						Text = Name,
 						TextColor3 = Theme["Color Text"],
 						Font = Enum.Font.GothamBold,
+						TextScaled = true,
 						TextXAlignment = "Left",
 						BackgroundTransparency = 1,
 						TextTransparency = 0.4
