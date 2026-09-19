@@ -2260,7 +2260,8 @@ function redzlib:MakeWindow(Configs)
 					Image = "rbxassetid://10734943674",
 					ImageColor3 = Theme["Color Dark Text"]
 				})
-
+				
+				local InputMaxCharacters = 30
 				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
 					Size = UDim2.new(1, -25, 1, 0),
 					Position = UDim2.new(0, 23, 0, 0),
@@ -2272,14 +2273,14 @@ function redzlib:MakeWindow(Configs)
 					PlaceholderColor3 = Theme["Color Dark Text"],
 					TextColor3 = Theme["Color Text"],
 					TextSize = 11,
-					TextScaled = true,
 					TextXAlignment = Enum.TextXAlignment.Left
 				}), "Text")
 
-				Create("UITextSizeConstraint", SearchInput, {
-					MaxTextSize = 11,
-					MinTextSize = 7
-				})
+				SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+					if #SearchInput.Text > InputMaxCharacters then
+						SearchInput.Text = SearchInput.Text:sub(1, InputMaxCharacters)
+					end
+				end)
 
 				SearchMessage = InsertTheme(Create("TextLabel", DropFrame, {
 					Size = UDim2.new(1, -16, 0, 20),
