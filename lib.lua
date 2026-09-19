@@ -2901,43 +2901,52 @@ function redzlib:MakeWindow(Configs)
 			end
 		end
 		function Tab:AddPlayers(Configs)
-			local PName = Configs[1] or Configs.Name or Configs.Title or "Players"
-			local PDesc = Configs.Desc or Configs.Description or ""
+			local TName = Configs[1] or Configs.Name or Configs.Title or "Players"
+			local TDesc = Configs.Desc or Configs.Description or ""
 			local Display = Configs.Display or false
 			local LocalPlayerEnabled = Configs.LocalPlayer ~= false
-			local Whitelist = Configs.Whitelist or {}
 			local MultiSelect = Configs.MultiSelect or false
 			local MultiLine = Configs.MultiLine or false
-			local MultiOptions = Configs.MultiOptions or {}
 			local Search = Configs.Search or false
-			local Flag = Configs[5] or Configs.Flag or false
+			local Whitelist = Configs.Whitelist or {}
 			local Callback = Funcs:GetCallback(Configs, 4)
-
-			local PlayerOptions = {}
-			local PlayerConnections = {}
-			local SelectedPlayers = {}
 
 			local PlayerDropdown
 
 			local function IsWhitelisted(Player)
+				if #Whitelist == 0 then
+					return true
+				end
+
 				for _, Value in pairs(Whitelist) do
-					if typeof(Value) == "Instance" and Value:IsA("Player") then
-						if Value == Player then
+					if Value == Player then
+						return true
+					end
+
+					if type(Value) == "number" and Value == Player.UserId then
+						return true
+					end
+
+					if type(Value) == "string" then
+						if Value == Player.Name or Value == Player.DisplayName then
 							return true
 						end
-					elseif type(Value) == "number" then
-						if Player.UserId == Value then
+					end
+
+					if type(Value) == "table" then
+						if Value.Player == Player then
 							return true
 						end
-					elseif type(Value) == "string" then
-						if Player.Name == Value or Player.DisplayName == Value then
+
+						if Value.UserId == Player.UserId then
 							return true
 						end
-					elseif type(Value) == "table" then
-						if Value.Player == Player
-							or Value.UserId == Player.UserId
-							or Value.Name == Player.Name
-							or Value.DisplayName == Player.DisplayName then
+
+						if Value.Name == Player.Name then
+							return true
+						end
+
+						if Value.DisplayName == Player.DisplayName then
 							return true
 						end
 					end
@@ -2946,178 +2955,190 @@ function redzlib:MakeWindow(Configs)
 				return false
 			end
 
-			local function GetPlayerText(Player)
-				return Display and Player.DisplayName or Player.Name
+			local function IsPlayerAllowed(Player)
+				if not Player then
+					return false
+				end
+
+				if not LocalPlayerEnabled and Player == Players.LocalPlayer then
+					return false
+				end
+
+				return IsWhitelisted(Player)
 			end
 
-			local function GetThumbnail(Player)
-				local Success, Content = pcall(function()
-					return Players:GetUserThumbnailAsync(
-						Player.UserId,
-						Enum.ThumbnailType.HeadShot,
-						Enum.ThumbnailSize.Size100x100
-					)
-				end)
+			local function GetDefaultName(Player)
+				if Display then
+					return Player.DisplayName
+				end
 
-				return Success and Content or ""
+				return Player.Name
 			end
 
 			local function CreatePlayerData(Player)
 				return {
 					Player = Player,
-					Name = GetPlayerText(Player),
-					DisplayName = Player.DisplayName,
-					UserName = Player.Name,
 					UserId = Player.UserId,
-					Thumbnail = GetThumbnail(Player)
+					Name = GetDefaultName(Player),
+					Username = Player.Name,
+					DisplayName = Player.DisplayName
 				}
 			end
 
-			local function CreatePlayerOption(Player)
-				if not Player or not Player.Parent then
-					return
+			local function GetPlayer(Value)
+				if type(Value) == "table" then
+					return Value.Player
 				end
 
-				if not LocalPlayerEnabled and Player == Players.LocalPlayer then
-					return
-				end
-
-				if IsWhitelisted(Player) then
-					return
-				end
-
-				if PlayerOptions[Player] then
-					return
-				end
-
-				local PlayerData = CreatePlayerData(Player)
-
-				PlayerOptions[Player] = PlayerData
-
-				if PlayerDropdown then
-					PlayerDropdown:Add(PlayerData)
-				end
+				return nil
 			end
 
-			local function RemovePlayerOption(Player)
-				local Data = PlayerOptions[Player]
-
-				if not Data then
-					return
-				end
-
-				if PlayerDropdown then
-					PlayerDropdown:Remove(Data.Name)
-				end
-
-				PlayerOptions[Player] = nil
-				SelectedPlayers[Player] = nil
-			end
-
-			PlayerDropdown = Tab:AddDropdown({
-				Name = PName,
-				Desc = PDesc,
-				Options = {},
-				MultiSelect = MultiSelect,
-				MultiLine = MultiLine,
-				MultiOptions = MultiOptions,
-				Search = Search,
-				Flag = Flag,
-				SearchConfig = Configs.SearchConfig,
-
-				OptionRenderer = function(Value, OptionButton, NameLabel)
-					if type(Value) ~= "table" or not Value.Player then
-						return
-					end
-
-					local Thumbnail = Create("ImageLabel", OptionButton, {
-						Name = "Thumbnail",
-						Size = UDim2.fromOffset(17, 17),
-						Position = UDim2.new(0, 8, 0.5, 0),
-						AnchorPoint = Vector2.new(0, 0.5),
-						BackgroundTransparency = 1,
-						Image = Value.Thumbnail or "",
-						ImageTransparency = Value.Thumbnail == "" and 1 or 0
-					})
-
-					Make("Corner", Thumbnail, UDim.new(1, 0))
-
-					NameLabel.Position = UDim2.new(0, 30, 0, 0)
-					NameLabel.Size = UDim2.new(1, -30, 1, 0)
-				end,
-
-				Callback = function(Value)
-					if MultiSelect then
-						table.clear(SelectedPlayers)
-
-						if type(Value) == "table" then
-							for Name, Selected in pairs(Value) do
-								if Selected then
-									for Player, Data in pairs(PlayerOptions) do
-										if Data.Name == Name then
-											SelectedPlayers[Player] = true
-											break
-										end
-									end
-								end
-							end
-						end
-
-						local Result = {}
-
-						for Player in pairs(SelectedPlayers) do
-							table.insert(Result, Player)
-						end
-
-						Funcs:FireCallback(Callback, Result)
-					else
-						local SelectedPlayer
-
-						if typeof(Value) == "Instance" and Value:IsA("Player") then
-							SelectedPlayer = Value
-						elseif type(Value) == "table" and Value.Player then
-							SelectedPlayer = Value.Player
-						end
-
-						Funcs:FireCallback(Callback, SelectedPlayer)
-					end
-				end
-			})
-
-			for _, Player in ipairs(Players:GetPlayers()) do
-				CreatePlayerOption(Player)
-			end
-
-			PlayerConnections.PlayerAdded = Players.PlayerAdded:Connect(function(Player)
-				CreatePlayerOption(Player)
-			end)
-
-			PlayerConnections.PlayerRemoving = Players.PlayerRemoving:Connect(function(Player)
-				RemovePlayerOption(Player)
-			end)
-
-			local PlayersElement = {}
-
-			function PlayersElement:Get()
+			local function ConvertCallback(Value)
 				if MultiSelect then
 					local Result = {}
 
-					for Player in pairs(SelectedPlayers) do
-						table.insert(Result, Player)
+					if type(Value) == "table" then
+						for _, Data in pairs(Value) do
+							local Player = GetPlayer(Data)
+
+							if Player then
+								Result[#Result + 1] = Player
+							end
+						end
 					end
 
 					return Result
 				end
 
-				local Selected = PlayerDropdown:Get()
+				return GetPlayer(Value)
+			end
 
-				for Player, Data in pairs(PlayerOptions) do
-					if Data.Name == Selected then
-						return Player
-					end
+			local function FirePlayerCallback(Value)
+				Funcs:FireCallback(Callback, ConvertCallback(Value))
+			end
+
+			local function GetSearchName(SearchText, Data)
+				local Player = GetPlayer(Data)
+
+				if not Player then
+					return Data and Data.Name or ""
 				end
 
-				return nil
+				SearchText = tostring(SearchText or "")
+				SearchText = SearchText:lower():gsub("^%s*(.-)%s*$", "%1")
+
+				if SearchText == "" then
+					return GetDefaultName(Player)
+				end
+
+				local Name = Player.Name
+				local DisplayName = Player.DisplayName
+
+				local NameLower = Name:lower()
+				local DisplayLower = DisplayName:lower()
+
+				local NameMatch = NameLower:sub(1, #SearchText) == SearchText
+				local DisplayMatch = DisplayLower:sub(1, #SearchText) == SearchText
+
+				if NameMatch then
+					return Name
+				end
+
+				if DisplayMatch then
+					return DisplayName
+				end
+
+				return GetDefaultName(Player)
+			end
+
+			local PlayerOptions = {}
+
+			for _, Player in ipairs(Players:GetPlayers()) do
+				if IsPlayerAllowed(Player) then
+					PlayerOptions[#PlayerOptions + 1] = CreatePlayerData(Player)
+				end
+			end
+
+			PlayerDropdown = Tab:AddDropdown({
+				Name = TName,
+				Desc = TDesc,
+				Options = PlayerOptions,
+				Default = Configs.Default,
+				Flag = Configs.Flag,
+				MultiSelect = MultiSelect,
+				MultiLine = MultiLine,
+				MultiOptions = Configs.MultiOptions,
+				Search = Search,
+
+				Callback = FirePlayerCallback,
+
+				OptionRenderer = function(Value, Nodes)
+					if type(Value) ~= "table" or not Value.Player then
+						return
+					end
+
+					local Player = Value.Player
+					local Thumbnail = Nodes and Nodes.Thumbnail
+
+					if not Thumbnail then
+						return
+					end
+
+					task.spawn(function()
+						local Success, Image = pcall(function()
+							return Players:GetUserThumbnailAsync(
+								Player.UserId,
+								Enum.ThumbnailType.HeadShot,
+								Enum.ThumbnailSize.Size48x48
+							)
+						end)
+
+						if Success and Image and Thumbnail.Parent then
+							Thumbnail.Image = Image
+						end
+					end)
+				end,
+
+				OnSearch = function(SearchText, Value)
+					return GetSearchName(SearchText, Value)
+				end
+			})
+
+			local function AddPlayer(Player)
+				if not PlayerDropdown then
+					return
+				end
+
+				if not IsPlayerAllowed(Player) then
+					return
+				end
+
+				PlayerDropdown:Add(CreatePlayerData(Player))
+			end
+
+			local function RemovePlayer(Player)
+				if not PlayerDropdown then
+					return
+				end
+
+				PlayerDropdown:Remove(Player.Name)
+				PlayerDropdown:Remove(Player.DisplayName)
+			end
+
+			local PlayerAddedConnection = Players.PlayerAdded:Connect(function(Player)
+				AddPlayer(Player)
+			end)
+
+			local PlayerRemovingConnection = Players.PlayerRemoving:Connect(function(Player)
+				RemovePlayer(Player)
+			end)
+
+			local PlayersElement = {}
+
+			function PlayersElement:Get()
+				local Value = PlayerDropdown:Get()
+
+				return ConvertCallback(Value)
 			end
 
 			function PlayersElement:Select(Player)
@@ -3125,29 +3146,35 @@ function redzlib:MakeWindow(Configs)
 					return
 				end
 
-				local Data = PlayerOptions[Player]
-
-				if Data then
-					PlayerDropdown:Select(Data.Name)
+				if not IsPlayerAllowed(Player) then
+					return
 				end
+
+				PlayerDropdown:Select(GetDefaultName(Player))
 			end
 
 			function PlayersElement:Add(Player)
-				if typeof(Player) == "Instance" and Player:IsA("Player") then
-					CreatePlayerOption(Player)
+				if typeof(Player) ~= "Instance" or not Player:IsA("Player") then
+					return
 				end
+
+				AddPlayer(Player)
 			end
 
 			function PlayersElement:Remove(Player)
-				if typeof(Player) == "Instance" and Player:IsA("Player") then
-					RemovePlayerOption(Player)
+				if typeof(Player) ~= "Instance" or not Player:IsA("Player") then
+					return
 				end
+
+				RemovePlayer(Player)
 			end
 
 			function PlayersElement:Callback(Func)
-				if type(Func) == "function" then
-					Callback = Func
+				if type(Func) ~= "function" then
+					return
 				end
+
+				Callback = Func
 			end
 
 			function PlayersElement:Visible(...)
@@ -3155,17 +3182,20 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			function PlayersElement:Destroy()
-				for _, Connection in pairs(PlayerConnections) do
-					if Connection then
-						Connection:Disconnect()
-					end
+				if PlayerAddedConnection then
+					PlayerAddedConnection:Disconnect()
+					PlayerAddedConnection = nil
 				end
 
-				table.clear(PlayerConnections)
-				table.clear(PlayerOptions)
-				table.clear(SelectedPlayers)
+				if PlayerRemovingConnection then
+					PlayerRemovingConnection:Disconnect()
+					PlayerRemovingConnection = nil
+				end
 
-				PlayerDropdown:Destroy()
+				if PlayerDropdown then
+					PlayerDropdown:Destroy()
+					PlayerDropdown = nil
+				end
 			end
 
 			return PlayersElement
