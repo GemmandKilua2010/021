@@ -2278,6 +2278,7 @@ function redzlib:MakeWindow(Configs)
 
 			local function CalculateSize()
 				local Count = 0
+
 				for _, Frame in pairs(ScrollFrame:GetChildren()) do
 					if Frame:IsA("Frame") or Frame.Name == "Option" then
 						Count = Count + 1
@@ -2388,13 +2389,8 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				local function CallbackSelected()
-					if MultiSelect then
-						SetFlag(Flag, Selected)
-						Funcs:FireCallback(Callback, Selected)
-					else
-						SetFlag(Flag, Selected)
-						Funcs:FireCallback(Callback, Selected ~= nil and true or false, Selected)
-					end
+					SetFlag(Flag, Selected)
+					Funcs:FireCallback(Callback, Selected)
 				end
 
 				local function UpdateLabel()
@@ -2422,59 +2418,6 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				local function UpdateSelected()
-					if MultiSelect then
-						for _, v in pairs(Options) do
-							local nodes, Stats = v.nodes, v.Stats
-
-							CreateTween({
-								nodes[2],
-								"BackgroundTransparency",
-								Stats and 0 or 0.8,
-								0.35
-							})
-
-							CreateTween({
-								nodes[2],
-								"Size",
-								Stats and UDim2.fromOffset(4, 12) or UDim2.fromOffset(4, 4),
-								0.35
-							})
-
-							CreateTween({
-								nodes[3],
-								"TextTransparency",
-								Stats and 0 or 0.4,
-								0.35
-							})
-						end
-					else
-						for _, v in pairs(Options) do
-							local Slt = v.Value == Selected
-							local nodes = v.nodes
-
-							CreateTween({
-								nodes[2],
-								"BackgroundTransparency",
-								Slt and 0 or 1,
-								0.35
-							})
-
-							CreateTween({
-								nodes[2],
-								"Size",
-								Slt and UDim2.fromOffset(4, 14) or UDim2.fromOffset(4, 4),
-								0.35
-							})
-
-							CreateTween({
-								nodes[3],
-								"TextTransparency",
-								Slt and 0 or 0.4,
-								0.35
-							})
-						end
-					end
-
 					UpdateLabel()
 				end
 
@@ -2501,13 +2444,12 @@ function redzlib:MakeWindow(Configs)
 					else
 						if Selected == Option.Value then
 							Selected = nil
-							Option.LastCB = tick()
-							CallbackSelected()
 						else
 							Selected = Option.Value
-							Option.LastCB = tick()
-							CallbackSelected()
 						end
+
+						Option.LastCB = tick()
+						CallbackSelected()
 					end
 
 					UpdateSelected()
@@ -2543,16 +2485,6 @@ function redzlib:MakeWindow(Configs)
 
 					Make("Corner", Button, UDim.new(0, 4))
 
-					local IsSelected = InsertTheme(Create("Frame", Button, {
-						Position = UDim2.new(0, 1, 0.5),
-						Size = UDim2.new(0, 4, 0, 4),
-						BackgroundColor3 = Theme["Color Theme"],
-						BackgroundTransparency = 1,
-						AnchorPoint = Vector2.new(0, 0.5)
-					}), "Theme")
-
-					Make("Corner", IsSelected, UDim.new(0.5, 0))
-
 					local OptioneName = InsertTheme(Create("TextLabel", Button, {
 						Size = UDim2.new(1, 0, 1),
 						Position = UDim2.new(0, 10),
@@ -2570,7 +2502,6 @@ function redzlib:MakeWindow(Configs)
 
 					Options[Name].nodes = {
 						Button,
-						IsSelected,
 						OptioneName
 					}
 				end
