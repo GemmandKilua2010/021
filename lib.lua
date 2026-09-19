@@ -2272,9 +2272,14 @@ function redzlib:MakeWindow(Configs)
 					PlaceholderColor3 = Theme["Color Dark Text"],
 					TextColor3 = Theme["Color Text"],
 					TextSize = 11,
-					TextXAlignment = "Left"
+					TextXAlignment = Enum.TextXAlignment.Left
 				}), "Text")
 
+				Create("UITextSizeConstraint", SearchInput, {
+					MaxTextSize = 11,
+					MinTextSize = 7
+				})
+				
 				SearchMessage = InsertTheme(Create("TextLabel", DropFrame, {
 					Size = UDim2.new(1, -16, 0, 20),
 					Position = UDim2.new(0, 8, 0, 32),
