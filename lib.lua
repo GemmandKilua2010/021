@@ -2857,16 +2857,19 @@ function redzlib:MakeWindow(Configs)
 			return TextBox
 		end
 		function Tab:AddKeybind(Configs)
+			if not UserInputService.KeyboardEnabled then return end
+
 			local KName = Configs[1] or Configs.Name or Configs.Title or "Keybind"
 			local KDesc = Configs.Desc or Configs.Description or ""
 			local KDefault = Configs.Value or Configs[2] or Enum.KeyCode.LeftShift
 			local Default = Configs.Default == true
+			local Toggle = Configs.Toggle ~= false
 			local PreventDuplicate = Configs.PreventDuplicate == true
 			local DisabledKeys = Configs.DisabledKeys or {}
 			local Callback = Funcs:GetCallback(Configs, 3)
 			local Keybind = {}
 			local CurrentKey
-			local Enabled = Default
+			local Enabled = Toggle and Default or false
 			local Waiting = false
 
 			local function ResolveKey(Key)
@@ -2959,37 +2962,35 @@ function redzlib:MakeWindow(Configs)
 				SizeConstraint.MaxSize = Vector2.new(MaxWidth, 18)
 				SelectedFrame.Size = UDim2.fromOffset(Width, 18)
 
-				if TextWidth > MaxWidth then
+				if TextWidth > MaxWidth and CurrentKey then
 					KeyButton.Text = string.sub(CurrentKey.Name, 1, math.max(1, math.floor(MaxWidth / 7))) .. "..."
 				end
 			end
 
 			local function UpdateState()
-				if Enabled then
-					CreateTween({
-						SelectedFrame,
-						"BackgroundColor3",
-						Theme["Color Theme"],
-						0.2
-					})
-				else
-					CreateTween({
-						SelectedFrame,
-						"BackgroundColor3",
-						Theme["Color Stroke"],
-						0.2
-					})
+				if not Toggle then
+					return
 				end
+
+				CreateTween({
+					SelectedFrame,
+					"BackgroundColor3",
+					Enabled and Theme["Color Theme"] or Theme["Color Stroke"],
+					0.2
+				})
 			end
 
-			local function SetState(State)
-				if type(State) ~= "boolean" then
+			local function SetState(State, Fire)
+				if not Toggle or type(State) ~= "boolean" then
 					return
 				end
 
 				Enabled = State
 				UpdateState()
-				Funcs:FireCallback(Callback, Enabled)
+
+				if Fire then
+					Funcs:FireCallback(Callback, Enabled)
+				end
 			end
 
 			local function SetKey(Key)
@@ -3016,7 +3017,9 @@ function redzlib:MakeWindow(Configs)
 
 			local MouseConnection = KeyButton.InputBegan:Connect(function(Input)
 				if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-					SetState(not Enabled)
+					Waiting = true
+					KeyButton.Text = "..."
+					UpdateSize()
 				elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 					Waiting = true
 					KeyButton.Text = "..."
@@ -3041,8 +3044,14 @@ function redzlib:MakeWindow(Configs)
 					return
 				end
 
-				if Input.KeyCode == CurrentKey then
-					SetState(not Enabled)
+				if Input.KeyCode ~= CurrentKey then
+					return
+				end
+
+				if Toggle then
+					SetState(not Enabled, true)
+				else
+					Funcs:FireCallback(Callback, true)
 				end
 			end)
 
@@ -3052,14 +3061,18 @@ function redzlib:MakeWindow(Configs)
 			task.defer(UpdateSize)
 
 			function Keybind:Set(Value)
-				if type(Value) == "boolean" then
-					SetState(Value)
+				if Toggle and type(Value) == "boolean" then
+					SetState(Value, true)
 				elseif type(Value) == "string" then
 					LabelFunc:SetTitle(Value)
 				end
 			end
 
 			function Keybind:Get()
+				if not Toggle then
+					return nil
+				end
+
 				return Enabled
 			end
 
