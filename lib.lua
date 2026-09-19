@@ -2573,7 +2573,7 @@ function redzlib:MakeWindow(Configs)
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
 				Image = "rbxassetid://10709791281",
-				ImageColor3 = Theme["Color Theme"]
+				ImageColor3 = Theme["Color Text"]
 			}), "Theme")
 
 			local RightButton = Create("TextButton", SelectedFrame, {
@@ -2601,7 +2601,7 @@ function redzlib:MakeWindow(Configs)
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
 				Image = "rbxassetid://10709791437",
-				ImageColor3 = Theme["Color Theme"]
+				ImageColor3 = Theme["Color Text"]
 			}), "Theme")
 
 			local ActiveLabel = InsertTheme(Create("TextLabel", SelectedFrame, {
