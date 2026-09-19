@@ -2186,7 +2186,7 @@ function redzlib:MakeWindow(Configs)
 			local DName = Configs[1] or Configs.Name or Configs.Title or "Dropdown"
 			local DDesc = Configs.Desc or Configs.Description or ""
 			local DOptions = Configs[2] or Configs.Options or {}
-			local OpDefault = Configs[3] or Configs.Default or "..."
+			local OpDefault = Configs[3] or Configs.Default or {}
 			local Flag = Configs[5] or Configs.Flag or false
 			local DMultiSelect = Configs.MultiSelect or false
 			local DMultiLine = Configs.MultiLine or false
@@ -2316,8 +2316,17 @@ function redzlib:MakeWindow(Configs)
 			local function CalculatePos()
 				local FramePos = SelectedFrame.AbsolutePosition
 				local ScreenSize = ScreenGui.AbsoluteSize
-				local ClampX = math.clamp((FramePos.X / UIScale), 0, ScreenSize.X / UIScale - DropFrame.Size.X.Offset)
-				local ClampY = math.clamp((FramePos.Y / UIScale), 0, ScreenSize.Y / UIScale)
+				local ClampX = math.clamp(
+					(FramePos.X / UIScale),
+					0,
+					ScreenSize.X / UIScale - DropFrame.Size.X.Offset
+				)
+				local ClampY = math.clamp(
+					(FramePos.Y / UIScale),
+					0,
+					ScreenSize.Y / UIScale
+				)
+
 				local NewPos = UDim2.fromOffset(ClampX, ClampY)
 				local AnchorPoint = FramePos.Y > ScreenSize.Y / 1.4 and 1 or ScrollSize > 80 and 0.5 or 0
 
@@ -2327,56 +2336,44 @@ function redzlib:MakeWindow(Configs)
 
 			local AddNewOptions, GetOptions, AddOption, RemoveOption, Selected do
 				local Default = type(OpDefault) ~= "table" and {OpDefault} or OpDefault
-				local MultiSelect = DMultiSelect or DMultiLine
-				local Options = {}
+				local MultiLine = DMultiLine
+				local MultiSelect = DMultiSelect or MultiLine
 
 				local MultiMax = tonumber(DMultiOptions.Max) or math.huge
 				local MultiMin = tonumber(DMultiOptions.Min) or 0
 
-				if MultiMax < 0 then
-					MultiMax = 0
-				end
+				MultiMax = math.max(0, MultiMax)
+				MultiMin = math.max(0, MultiMin)
 
-				if MultiMin < 0 then
-					MultiMin = 0
-				end
-
-				if MultiMin > MultiMax then
+				if MultiMax ~= math.huge and MultiMin > MultiMax then
 					MultiMin = MultiMax
 				end
 
-				if DMultiLine then
-					Selected = {}
-				elseif DMultiSelect then
+				local Options = {}
+
+				if MultiSelect then
 					Selected = {}
 
 					local Saved = CheckFlag(Flag) and GetFlag(Flag) or nil
 
 					if type(Saved) == "table" then
 						for index, Value in pairs(Saved) do
-							if Value then
+							if type(index) == "string" and Value and (DOptions[index] or table.find(DOptions, index)) then
 								Selected[index] = true
 							end
 						end
-					else
-						for index, Value in pairs(Default) do
-							if type(index) == "string" and (DOptions[index] or table.find(DOptions, index)) then
-								Selected[index] = Value
-							elseif DOptions[Value] then
+					elseif type(Default) == "table" then
+						for _, Value in pairs(Default) do
+							if type(Value) == "string" and (DOptions[Value] or table.find(DOptions, Value)) then
 								Selected[Value] = true
 							end
 						end
 					end
 				else
-					local Saved = CheckFlag(Flag) and GetFlag(Flag) or nil
-					Selected = Saved ~= nil and Saved or nil
+					Selected = CheckFlag(Flag) and GetFlag(Flag) or Default[1]
 				end
 
 				local function GetSelectedCount()
-					if not MultiSelect then
-						return Selected ~= nil and 1 or 0
-					end
-
 					local Count = 0
 
 					for _, Value in pairs(Selected) do
@@ -2389,110 +2386,89 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				local function CallbackSelected()
-					SetFlag(Flag, Selected)
-					Funcs:FireCallback(Callback, Selected)
+					if MultiSelect then
+						SetFlag(Flag, Selected)
+						Funcs:FireCallback(Callback, Selected)
+					else
+						SetFlag(Flag, Selected and tostring(Selected) or false)
+						Funcs:FireCallback(Callback, Selected)
+					end
 				end
 
 				local function UpdateLabel()
 					if MultiSelect then
 						local List = {}
 
-						for index, Value in pairs(Selected) do
+						for Name, Value in pairs(Selected) do
 							if Value then
-								table.insert(List, index)
+								table.insert(List, Name)
 							end
 						end
 
-						if #List > 0 then
-							ActiveLabel.Text = table.concat(List, ", ")
-						else
-							ActiveLabel.Text = tostring(OpDefault)
-						end
+						ActiveLabel.Text = #List > 0 and table.concat(List, ", ") or tostring(Default[1] or "...")
 					else
-						if Selected ~= nil then
-							ActiveLabel.Text = tostring(Selected)
-						else
-							ActiveLabel.Text = tostring(OpDefault)
-						end
+						ActiveLabel.Text = Selected ~= nil and tostring(Selected) or tostring(Default[1] or "...")
 					end
 				end
 
 				local function UpdateSelected()
-					if MultiSelect then
-						for _, v in pairs(Options) do
-							local nodes, Stats = v.nodes, v.Stats
+					for _, Value in pairs(Options) do
+						local Nodes = Value.nodes
+						local IsActive = MultiSelect and Value.Stats or Value.Value == Selected
 
-							CreateTween({
-								nodes[2],
-								"BackgroundTransparency",
-								Stats and 0 or 0.8,
-								0.35
-							})
+						-- IsSelected original:
+						-- selecionado = barra |
+						-- desmarcado = completamente invisível
+						CreateTween({
+							Nodes[2],
+							"BackgroundTransparency",
+							IsActive and 0 or 1,
+							0.35
+						})
 
-							CreateTween({
-								nodes[2],
-								"Size",
-								Stats and UDim2.fromOffset(4, 12) or UDim2.fromOffset(4, 4),
-								0.35
-							})
+						CreateTween({
+							Nodes[2],
+							"Size",
+							IsActive
+								and UDim2.fromOffset(4, 14)
+								or UDim2.fromOffset(4, 4),
+							0.35
+						})
 
-							CreateTween({
-								nodes[3],
-								"TextTransparency",
-								Stats and 0 or 0.4,
-								0.35
-							})
-						end
-					else
-						for _, v in pairs(Options) do
-							local Slt = v.Value == Selected
-							local nodes = v.nodes
-
-							CreateTween({
-								nodes[2],
-								"BackgroundTransparency",
-								Slt and 0 or 1,
-								0.35
-							})
-
-							CreateTween({
-								nodes[2],
-								"Size",
-								Slt and UDim2.fromOffset(4, 14) or UDim2.fromOffset(4, 4),
-								0.35
-							})
-
-							CreateTween({
-								nodes[3],
-								"TextTransparency",
-								Slt and 0 or 0.4,
-								0.35
-							})
-						end
+						CreateTween({
+							Nodes[3],
+							"TextTransparency",
+							IsActive and 0 or 0.4,
+							0.35
+						})
 					end
 
 					UpdateLabel()
 				end
 
 				local function Select(Option)
-					if MultiSelect then
-						local IsSelected = Option.Stats
-						local Count = GetSelectedCount()
+					if not Option then return end
 
-						if IsSelected then
-							if Count <= MultiMin then
+					if MultiSelect then
+						local CurrentCount = GetSelectedCount()
+
+						if Option.Stats then
+							if CurrentCount <= MultiMin then
 								return
 							end
+
+							Option.Stats = false
+							Selected[Option.Name] = false
 						else
-							if Count >= MultiMax then
+							if CurrentCount >= MultiMax then
 								return
 							end
+
+							Option.Stats = true
+							Selected[Option.Name] = true
 						end
 
-						Option.Stats = not IsSelected
 						Option.LastCB = tick()
-						Selected[Option.Name] = Option.Stats
-
 						CallbackSelected()
 					else
 						if Selected == Option.Value then
@@ -2538,7 +2514,6 @@ function redzlib:MakeWindow(Configs)
 
 					Make("Corner", Button, UDim.new(0, 4))
 
-					-- Indicador visual original
 					local IsSelected = InsertTheme(Create("Frame", Button, {
 						Position = UDim2.new(0, 1, 0.5),
 						Size = UDim2.new(0, 4, 0, 4),
@@ -2577,7 +2552,7 @@ function redzlib:MakeWindow(Configs)
 					if Options[Name] then
 						if MultiSelect then
 							Selected[Name] = nil
-						elseif Selected == Options[Name].Value then
+						else
 							Selected = nil
 						end
 
@@ -2585,6 +2560,8 @@ function redzlib:MakeWindow(Configs)
 						table.clear(Options[Name])
 						Options[Name] = nil
 					end
+
+					UpdateSelected()
 				end
 
 				GetOptions = function()
@@ -2593,17 +2570,31 @@ function redzlib:MakeWindow(Configs)
 
 				AddNewOptions = function(List, Clear)
 					if Clear then
-						for index, Value in pairs(Options) do
-							RemoveOption(index, Value.Value)
+						local RemoveList = {}
+
+						for Name, Value in pairs(Options) do
+							table.insert(RemoveList, {
+								Name = Name,
+								Value = Value.Value
+							})
+						end
+
+						for _, Value in pairs(RemoveList) do
+							RemoveOption(Value.Name, Value.Value)
 						end
 					end
 
-					table.foreach(List, AddOption)
+					for Index, Value in pairs(List) do
+						AddOption(Index, Value)
+					end
+
 					CallbackSelected()
 					UpdateSelected()
 				end
 
-				table.foreach(DOptions, AddOption)
+				for Index, Value in pairs(DOptions) do
+					AddOption(Index, Value)
+				end
 
 				CallbackSelected()
 				UpdateSelected()
@@ -2639,12 +2630,12 @@ function redzlib:MakeWindow(Configs)
 				local NewOptions = {...}
 
 				if type(NewOptions[1]) == "table" then
-					for _, Name in pairs(NewOptions[1]) do
-						AddOption(Name)
+					for Index, Name in pairs(NewOptions[1]) do
+						AddOption(Index, Name)
 					end
 				else
 					for _, Name in pairs(NewOptions) do
-						AddOption(Name)
+						AddOption(Name, Name)
 					end
 				end
 
@@ -2653,42 +2644,26 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			function Dropdown:Remove(Option)
-				if type(Option) == "number" then
-					local Count = 0
-
-					for index, Value in pairs(Options) do
-						Count = Count + 1
-
-						if Count == Option then
-							RemoveOption(index, Value.Value)
-							break
-						end
+				for Index, Value in pairs(GetOptions()) do
+					if (type(Option) == "number" and Index == Option) or Value.Name == Option then
+						RemoveOption(Index, Value.Value)
+						break
 					end
-				else
-					RemoveOption(Option, Option)
 				end
-
-				CallbackSelected()
-				UpdateSelected()
-				CalculateSize()
 			end
 
 			function Dropdown:Select(Option)
 				if type(Option) == "string" then
-					for _, Val in pairs(Options) do
-						if Val.Name == Option then
-							Select(Val)
+					for _, Value in pairs(Options) do
+						if Value.Name == Option then
+							Select(Value)
 							break
 						end
 					end
 				elseif type(Option) == "number" then
-					local Count = 0
-
-					for _, Val in pairs(Options) do
-						Count = Count + 1
-
-						if Count == Option then
-							Select(Val)
+					for Index, Value in pairs(Options) do
+						if Index == Option then
+							Select(Value)
 							break
 						end
 					end
