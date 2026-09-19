@@ -2565,7 +2565,7 @@ function redzlib:MakeWindow(Configs)
 				BackgroundTransparency = 1
 			}), "Theme")
 
-			Make("Corner", LeftHover, UDim.new(0, 4))
+			Make("Corner", LeftHover, UDim.new(0, 2))
 
 			local LeftArrow = InsertTheme(Create("ImageLabel", LeftButton, {
 				Size = UDim2.fromOffset(12, 12),
@@ -2593,8 +2593,8 @@ function redzlib:MakeWindow(Configs)
 				BackgroundTransparency = 1
 			}), "Theme")
 
-			Make("Corner", RightHover, UDim.new(0, 4))
-
+			Make("Corner", RightHover, UDim.new(0, 2))
+			
 			local RightArrow = InsertTheme(Create("ImageLabel", RightButton, {
 				Size = UDim2.fromOffset(12, 12),
 				Position = UDim2.fromScale(0.5, 0.5),
