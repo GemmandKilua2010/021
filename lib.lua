@@ -2833,9 +2833,15 @@ function redzlib:MakeWindow(Configs)
 				function Dropdown:Add(...)
 					local NewOptions = {...}
 
-					if type(NewOptions[1]) == "table" and not NewOptions[1].Player then
-						for Index, Name in pairs(NewOptions[1]) do
-							AddOption(Index, Name)
+					if #NewOptions == 1 and type(NewOptions[1]) == "table" then
+						local Value = NewOptions[1]
+
+						if Value.Player then
+							AddOption(Value.Name, Value)
+						else
+							for Index, Name in pairs(Value) do
+								AddOption(Index, Name)
+							end
 						end
 					else
 						for _, Name in pairs(NewOptions) do
@@ -2911,6 +2917,8 @@ function redzlib:MakeWindow(Configs)
 			local PlayerConnections = {}
 			local SelectedPlayers = {}
 
+			local PlayerDropdown
+
 			local function IsWhitelisted(Player)
 				for _, Value in pairs(Whitelist) do
 					if typeof(Value) == "Instance" and Value:IsA("Player") then
@@ -2922,8 +2930,7 @@ function redzlib:MakeWindow(Configs)
 							return true
 						end
 					elseif type(Value) == "string" then
-						if Player.Name == Value
-							or Player.DisplayName == Value then
+						if Player.Name == Value or Player.DisplayName == Value then
 							return true
 						end
 					elseif type(Value) == "table" then
@@ -2940,11 +2947,7 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			local function GetPlayerText(Player)
-				if Display then
-					return Player.DisplayName
-				end
-
-				return Player.Name
+				return Display and Player.DisplayName or Player.Name
 			end
 
 			local function GetThumbnail(Player)
@@ -2956,19 +2959,22 @@ function redzlib:MakeWindow(Configs)
 					)
 				end)
 
-				if Success then
-					return Content
-				end
+				return Success and Content or ""
+			end
 
-				return ""
+			local function CreatePlayerData(Player)
+				return {
+					Player = Player,
+					Name = GetPlayerText(Player),
+					DisplayName = Player.DisplayName,
+					UserName = Player.Name,
+					UserId = Player.UserId,
+					Thumbnail = GetThumbnail(Player)
+				}
 			end
 
 			local function CreatePlayerOption(Player)
 				if not Player or not Player.Parent then
-					return
-				end
-
-				if not LocalPlayerEnabled and Player == Player.LocalPlayer then
 					return
 				end
 
@@ -2984,18 +2990,13 @@ function redzlib:MakeWindow(Configs)
 					return
 				end
 
-				local PlayerData = {
-					Player = Player,
-					Name = GetPlayerText(Player),
-					DisplayName = Player.DisplayName,
-					UserName = Player.Name,
-					UserId = Player.UserId,
-					Thumbnail = GetThumbnail(Player)
-				}
+				local PlayerData = CreatePlayerData(Player)
 
 				PlayerOptions[Player] = PlayerData
 
-				PlayerDropdown:Add(PlayerData)
+				if PlayerDropdown then
+					PlayerDropdown:Add(PlayerData)
+				end
 			end
 
 			local function RemovePlayerOption(Player)
@@ -3005,12 +3006,15 @@ function redzlib:MakeWindow(Configs)
 					return
 				end
 
-				PlayerDropdown:Remove(Data.Name)
+				if PlayerDropdown then
+					PlayerDropdown:Remove(Data.Name)
+				end
+
 				PlayerOptions[Player] = nil
 				SelectedPlayers[Player] = nil
 			end
 
-			local PlayerDropdown = Tab:AddDropdown({
+			PlayerDropdown = Tab:AddDropdown({
 				Name = PName,
 				Desc = PDesc,
 				Options = {},
@@ -3019,7 +3023,6 @@ function redzlib:MakeWindow(Configs)
 				MultiOptions = MultiOptions,
 				Search = Search,
 				Flag = Flag,
-
 				SearchConfig = Configs.SearchConfig,
 
 				OptionRenderer = function(Value, OptionButton, NameLabel)
@@ -3106,8 +3109,10 @@ function redzlib:MakeWindow(Configs)
 					return Result
 				end
 
+				local Selected = PlayerDropdown:Get()
+
 				for Player, Data in pairs(PlayerOptions) do
-					if Data.Name == PlayerDropdown:Get() then
+					if Data.Name == Selected then
 						return Player
 					end
 				end
@@ -3120,7 +3125,11 @@ function redzlib:MakeWindow(Configs)
 					return
 				end
 
-				PlayerDropdown:Select(GetPlayerText(Player))
+				local Data = PlayerOptions[Player]
+
+				if Data then
+					PlayerDropdown:Select(Data.Name)
+				end
 			end
 
 			function PlayersElement:Add(Player)
@@ -3142,7 +3151,7 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			function PlayersElement:Visible(...)
-				Funcs:ToggleVisible(PlayerDropdown, ...)
+				PlayerDropdown:Visible(...)
 			end
 
 			function PlayersElement:Destroy()
