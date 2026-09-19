@@ -2862,18 +2862,26 @@ function redzlib:MakeWindow(Configs)
 			local Callback = Funcs:GetCallback(Configs, 3)
 			local BlockedKey = Configs.BlockedKey or {}
 
-			if type(TDefault) == "string" then
-				TDefault = Enum.KeyCode[TDefault]
+			local function GetKey(Key)
+				if typeof(Key) == "EnumItem" and Key.EnumType == Enum.KeyCode then
+					return Key
+				end
+
+				if type(Key) == "string" then
+					for _, EnumKey in ipairs(Enum.KeyCode:GetEnumItems()) do
+						if EnumKey.Name:lower() == Key:lower() then
+							return EnumKey
+						end
+					end
+				end
 			end
 
-			if typeof(TDefault) ~= "EnumItem" or TDefault.EnumType ~= Enum.KeyCode then
-				TDefault = Enum.KeyCode.G
-			end
+			TDefault = GetKey(TDefault) or Enum.KeyCode.G
 
-			local Button, LabelFunc = ButtonFrame(Container, TName, TDesc, UDim2.new(1, -38))
+			local Button, LabelFunc = ButtonFrame(Container, TName, TDesc, UDim2.new(1, -80))
 
 			local SelectedFrame = InsertTheme(Create("Frame", Button, {
-				Size = UDim2.new(0, 100, 0, 22),
+				Size = UDim2.new(0, 55, 0, 18),
 				Position = UDim2.new(1, -10, 0.5),
 				AnchorPoint = Vector2.new(1, 0.5),
 				BackgroundColor3 = Theme["Color Stroke"]
@@ -2884,11 +2892,11 @@ function redzlib:MakeWindow(Configs)
 			local KeyButton = InsertTheme(Create("TextButton", SelectedFrame, {
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
+				AutoButtonColor = false,
 				Font = Enum.Font.GothamBold,
-				TextScaled = true,
+				TextSize = 12,
 				TextColor3 = Theme["Color Text"],
-				Text = TDefault.Name,
-				AutoButtonColor = false
+				Text = TDefault.Name
 			}), "Text")
 
 			local Keybind = {}
@@ -2896,15 +2904,13 @@ function redzlib:MakeWindow(Configs)
 			local Waiting = false
 
 			local function IsBlocked(Key)
-				if typeof(Key) ~= "EnumItem" or Key.EnumType ~= Enum.KeyCode then
+				if not Key then
 					return true
 				end
 
 				for Index, Value in pairs(BlockedKey) do
 					if type(Index) == "number" then
-						if type(Value) == "string" then
-							Value = Enum.KeyCode[Value]
-						end
+						Value = GetKey(Value)
 
 						if Key == Value then
 							return true
@@ -2912,35 +2918,23 @@ function redzlib:MakeWindow(Configs)
 					end
 				end
 
-				if BlockedKey.Number and Key.Name:match("^%d$") then
-					return true
-				end
-
-				if BlockedKey.Strings and Key.Name:match("^[A-Z]$") then
-					return true
-				end
-
 				return false
 			end
 
 			local function SetKey(Key)
-				if type(Key) == "string" then
-					Key = Enum.KeyCode[Key]
-				end
+				Key = GetKey(Key)
 
-				if typeof(Key) ~= "EnumItem" or Key.EnumType ~= Enum.KeyCode then
-					return
-				end
-
-				if IsBlocked(Key) then
-					return
+				if not Key or IsBlocked(Key) then
+					return false
 				end
 
 				CurrentKey = Key
 				KeyButton.Text = Key.Name
+
+				return true
 			end
 
-			KeyButton.MouseButton1Click:Connect(function()
+			KeyButton.Activated:Connect(function()
 				if Waiting then
 					return
 				end
@@ -2949,26 +2943,19 @@ function redzlib:MakeWindow(Configs)
 				KeyButton.Text = "..."
 			end)
 
-			UIS.InputBegan:Connect(function(Input, GameProcessed)
+			local InputConnection = UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+				if Input.UserInputType ~= Enum.UserInputType.Keyboard then
+					return
+				end
+
 				if Waiting then
-					if Input.UserInputType ~= Enum.UserInputType.Keyboard then
-						return
+					if SetKey(Input.KeyCode) then
+						Waiting = false
 					end
-
-					if IsBlocked(Input.KeyCode) then
-						return
-					end
-
-					Waiting = false
-					SetKey(Input.KeyCode)
 					return
 				end
 
 				if GameProcessed then
-					return
-				end
-
-				if Input.UserInputType ~= Enum.UserInputType.Keyboard then
 					return
 				end
 
@@ -2978,10 +2965,6 @@ function redzlib:MakeWindow(Configs)
 			end)
 
 			function Keybind:SetKeybind(Key)
-				if type(Key) == "string" then
-					Key = Enum.KeyCode[Key]
-				end
-
 				SetKey(Key)
 			end
 
@@ -2990,11 +2973,9 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			function Keybind:Callback(Func)
-				if type(Func) ~= "function" then
-					return
+				if type(Func) == "function" then
+					Callback = Func
 				end
-
-				Callback = Func
 			end
 
 			function Keybind:Visible(...)
@@ -3002,6 +2983,7 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			function Keybind:Destroy()
+				InputConnection:Disconnect()
 				Button:Destroy()
 			end
 
