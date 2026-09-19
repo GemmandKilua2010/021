@@ -2532,6 +2532,8 @@ function redzlib:MakeWindow(Configs)
 			local SOptions = Configs[2] or Configs.Options or {}
 			local SDefault = Configs[3] or Configs.Default or 1
 			local Callback = Funcs:GetCallback(Configs, 4)
+			
+			local HoverCorner = 3
 
 			if type(SOptions) ~= "table" or #SOptions == 0 then
 				return
@@ -2565,7 +2567,7 @@ function redzlib:MakeWindow(Configs)
 				BackgroundTransparency = 1
 			}), "Theme")
 
-			Make("Corner", LeftHover, UDim.new(0, 2))
+			Make("Corner", LeftHover, UDim.new(0, HoverCorner))
 
 			local LeftArrow = InsertTheme(Create("ImageLabel", LeftButton, {
 				Size = UDim2.fromOffset(12, 12),
@@ -2593,8 +2595,8 @@ function redzlib:MakeWindow(Configs)
 				BackgroundTransparency = 1
 			}), "Theme")
 
-			Make("Corner", RightHover, UDim.new(0, 2))
-			
+			Make("Corner", RightHover, UDim.new(0, HoverCorner))
+
 			local RightArrow = InsertTheme(Create("ImageLabel", RightButton, {
 				Size = UDim2.fromOffset(12, 12),
 				Position = UDim2.fromScale(0.5, 0.5),
