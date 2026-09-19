@@ -2549,8 +2549,8 @@ function redzlib:MakeWindow(Configs)
 			Make("Corner", SelectedFrame, UDim.new(0, 5))
 
 			local LeftButton = Create("TextButton", SelectedFrame, {
-				Size = UDim2.fromOffset(22, 22),
-				Position = UDim2.new(0, 2, 0.5, 0),
+				Size = UDim2.fromOffset(24, 22),
+				Position = UDim2.new(0, 1, 0.5, 0),
 				AnchorPoint = Vector2.new(0, 0.5),
 				BackgroundTransparency = 1,
 				AutoButtonColor = false,
@@ -2568,16 +2568,17 @@ function redzlib:MakeWindow(Configs)
 			Make("Corner", LeftHover, UDim.new(0, 4))
 
 			local LeftArrow = InsertTheme(Create("ImageLabel", LeftButton, {
-				Size = UDim2.fromOffset(9, 9),
+				Size = UDim2.fromOffset(11, 11),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Image = "rbxassetid://10709791281"
+				Image = "rbxassetid://10709791281",
+				ImageColor3 = Theme["Color Theme"]
 			}), "Theme")
 
 			local RightButton = Create("TextButton", SelectedFrame, {
-				Size = UDim2.fromOffset(22, 22),
-				Position = UDim2.new(1, -2, 0.5, 0),
+				Size = UDim2.fromOffset(24, 22),
+				Position = UDim2.new(1, -1, 0.5, 0),
 				AnchorPoint = Vector2.new(1, 0.5),
 				BackgroundTransparency = 1,
 				AutoButtonColor = false,
@@ -2595,21 +2596,24 @@ function redzlib:MakeWindow(Configs)
 			Make("Corner", RightHover, UDim.new(0, 4))
 
 			local RightArrow = InsertTheme(Create("ImageLabel", RightButton, {
-				Size = UDim2.fromOffset(9, 9),
+				Size = UDim2.fromOffset(11, 11),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Image = "rbxassetid://10709791437"
+				Image = "rbxassetid://10709791437",
+				ImageColor3 = Theme["Color Theme"]
 			}), "Theme")
 
 			local ActiveLabel = InsertTheme(Create("TextLabel", SelectedFrame, {
-				Size = UDim2.new(1, -52, 1, 0),
+				Size = UDim2.new(1, -58, 1, 0),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Font = Enum.Font.Gotham,
-				TextSize = 9,
+				Font = Enum.Font.GothamBold,
+				TextSize = 10,
 				TextColor3 = Theme["Color Theme"],
+				TextStrokeColor3 = Theme["Color Theme"],
+				TextStrokeTransparency = 0.8,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,
