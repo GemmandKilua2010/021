@@ -2618,15 +2618,7 @@ function redzlib:MakeWindow(Configs)
 						local OptionButton = Value.nodes[1]
 						local OptionName = Value.Name:lower()
 
-						local Match
-
-						if SearchText == "" then
-							Match = true
-						elseif SearchConfig.PrefixOnly then
-							Match = OptionName:sub(1, #SearchText) == SearchText
-						else
-							Match = OptionName:find(SearchText, 1, true) ~= nil
-						end
+						local Match = SearchText == "" or OptionName:sub(1, #SearchText) == SearchText
 
 						OptionButton.Visible = Match
 
