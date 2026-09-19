@@ -1670,6 +1670,7 @@ function redzlib:MakeWindow(Configs)
 	
 	local Minimized, SaveSize, WaitClick
 	local Window, FirstTab = {}, false
+	local KeybindRegistry = {}
 	function Window:CloseBtn()
 		local Dialog = Window:Dialog({
 			Title = "Fechar",
@@ -2856,34 +2857,80 @@ function redzlib:MakeWindow(Configs)
 			return TextBox
 		end
 		function Tab:AddKeybind(Configs)
-			local TName = Configs[1] or Configs.Name or Configs.Title or "Keybind"
-			local TDesc = Configs.Desc or Configs.Description or ""
-			local TDefault = Configs[2] or Configs.Default or Enum.KeyCode.G
+			local KName = Configs[1] or Configs.Name or Configs.Title or "Keybind"
+			local KDesc = Configs.Desc or Configs.Description or ""
+			local KDefault = Configs.Value or Configs[2] or Enum.KeyCode.LeftShift
+			local Default = Configs.Default == true
+			local PreventDuplicate = Configs.PreventDuplicate == true
+			local DisabledKeys = Configs.DisabledKeys or {}
 			local Callback = Funcs:GetCallback(Configs, 3)
-			local BlockedKey = Configs.BlockedKey or {}
+			local Keybind = {}
+			local CurrentKey
+			local Enabled = Default
+			local Waiting = false
 
-			local function GetKey(Key)
+			local function ResolveKey(Key)
 				if typeof(Key) == "EnumItem" and Key.EnumType == Enum.KeyCode then
 					return Key
 				end
 
 				if type(Key) == "string" then
+					Key = Key:gsub("^%s*(.-)%s*$", "%1")
+
 					for _, EnumKey in ipairs(Enum.KeyCode:GetEnumItems()) do
 						if EnumKey.Name:lower() == Key:lower() then
 							return EnumKey
 						end
 					end
 				end
+
+				return nil
 			end
 
-			TDefault = GetKey(TDefault) or Enum.KeyCode.G
+			local function IsDisabled(Key)
+				for _, DisabledKey in ipairs(DisabledKeys) do
+					if ResolveKey(DisabledKey) == Key then
+						return true
+					end
+				end
 
-			local Button, LabelFunc = ButtonFrame(Container, TName, TDesc, UDim2.new(1, -80))
+				return false
+			end
+
+			local function IsDuplicate(Key)
+				if not PreventDuplicate then
+					return false
+				end
+
+				local Registered = KeybindRegistry[Key]
+				return Registered and Registered ~= Keybind
+			end
+
+			local function RegisterKey(Key)
+				if not Key or IsDisabled(Key) or IsDuplicate(Key) then
+					return false
+				end
+
+				if CurrentKey and KeybindRegistry[CurrentKey] == Keybind then
+					KeybindRegistry[CurrentKey] = nil
+				end
+
+				CurrentKey = Key
+
+				if PreventDuplicate then
+					KeybindRegistry[CurrentKey] = Keybind
+				end
+
+				return true
+			end
+
+			local Button, LabelFunc = ButtonFrame(Container, KName, KDesc, UDim2.new(1, -38))
 
 			local SelectedFrame = InsertTheme(Create("Frame", Button, {
-				Size = UDim2.new(0, 55, 0, 18),
+				Size = UDim2.fromOffset(30, 18),
 				Position = UDim2.new(1, -10, 0.5),
 				AnchorPoint = Vector2.new(1, 0.5),
+				AutomaticSize = Enum.AutomaticSize.X,
 				BackgroundColor3 = Theme["Color Stroke"]
 			}), "Stroke")
 
@@ -2891,56 +2938,90 @@ function redzlib:MakeWindow(Configs)
 
 			local KeyButton = InsertTheme(Create("TextButton", SelectedFrame, {
 				Size = UDim2.new(1, 0, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.X,
 				BackgroundTransparency = 1,
 				AutoButtonColor = false,
 				Font = Enum.Font.GothamBold,
-				TextSize = 12,
+				TextSize = 10,
 				TextColor3 = Theme["Color Text"],
-				Text = TDefault.Name
+				Text = "..."
 			}), "Text")
 
-			local Keybind = {}
-			local CurrentKey = TDefault
-			local Waiting = false
+			local SizeConstraint = Create("UISizeConstraint", SelectedFrame, {
+				MinSize = Vector2.new(25, 18)
+			})
 
-			local function IsBlocked(Key)
-				if not Key then
-					return true
+			local function UpdateSize()
+				local MaxWidth = math.max(25, Button.AbsoluteSize.X - 100)
+				local TextWidth = KeyButton.TextBounds.X + 16
+				local Width = math.clamp(TextWidth, 25, MaxWidth)
+
+				SizeConstraint.MaxSize = Vector2.new(MaxWidth, 18)
+				SelectedFrame.Size = UDim2.fromOffset(Width, 18)
+
+				if TextWidth > MaxWidth then
+					KeyButton.Text = string.sub(CurrentKey.Name, 1, math.max(1, math.floor(MaxWidth / 7))) .. "..."
+				end
+			end
+
+			local function UpdateState()
+				if Enabled then
+					CreateTween({
+						SelectedFrame,
+						"BackgroundColor3",
+						Theme["Color Theme"],
+						0.2
+					})
+				else
+					CreateTween({
+						SelectedFrame,
+						"BackgroundColor3",
+						Theme["Color Stroke"],
+						0.2
+					})
+				end
+			end
+
+			local function SetState(State)
+				if type(State) ~= "boolean" then
+					return
 				end
 
-				for Index, Value in pairs(BlockedKey) do
-					if type(Index) == "number" then
-						Value = GetKey(Value)
-
-						if Key == Value then
-							return true
-						end
-					end
-				end
-
-				return false
+				Enabled = State
+				UpdateState()
+				Funcs:FireCallback(Callback, Enabled)
 			end
 
 			local function SetKey(Key)
-				Key = GetKey(Key)
+				Key = ResolveKey(Key)
 
-				if not Key or IsBlocked(Key) then
+				if not RegisterKey(Key) then
 					return false
 				end
 
-				CurrentKey = Key
-				KeyButton.Text = Key.Name
+				KeyButton.Text = CurrentKey.Name
+				UpdateSize()
 
 				return true
 			end
 
-			KeyButton.Activated:Connect(function()
-				if Waiting then
-					return
-				end
+			local InitialKey = ResolveKey(KDefault) or Enum.KeyCode.LeftShift
 
-				Waiting = true
-				KeyButton.Text = "..."
+			if not RegisterKey(InitialKey) then
+				RegisterKey(Enum.KeyCode.LeftShift)
+			end
+
+			KeyButton.Text = CurrentKey.Name
+			UpdateState()
+
+			local MouseConnection = KeyButton.InputBegan:Connect(function(Input)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+					SetState(not Enabled)
+				elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+					Waiting = true
+					KeyButton.Text = "..."
+					UpdateSize()
+				end
 			end)
 
 			local InputConnection = UserInputService.InputBegan:Connect(function(Input, GameProcessed)
@@ -2949,9 +3030,10 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				if Waiting then
-					if SetKey(Input.KeyCode) then
+					if Input.KeyCode ~= Enum.KeyCode.Unknown and SetKey(Input.KeyCode) then
 						Waiting = false
 					end
+
 					return
 				end
 
@@ -2960,9 +3042,26 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				if Input.KeyCode == CurrentKey then
-					Funcs:FireCallback(Callback, CurrentKey)
+					SetState(not Enabled)
 				end
 			end)
+
+			Button:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateSize)
+			KeyButton:GetPropertyChangedSignal("TextBounds"):Connect(UpdateSize)
+
+			task.defer(UpdateSize)
+
+			function Keybind:Set(Value)
+				if type(Value) == "boolean" then
+					SetState(Value)
+				elseif type(Value) == "string" then
+					LabelFunc:SetTitle(Value)
+				end
+			end
+
+			function Keybind:Get()
+				return Enabled
+			end
 
 			function Keybind:SetKeybind(Key)
 				SetKey(Key)
@@ -2983,8 +3082,17 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			function Keybind:Destroy()
+				if KeybindRegistry[CurrentKey] == Keybind then
+					KeybindRegistry[CurrentKey] = nil
+				end
+
+				MouseConnection:Disconnect()
 				InputConnection:Disconnect()
 				Button:Destroy()
+			end
+
+			if PreventDuplicate then
+				KeybindRegistry[CurrentKey] = Keybind
 			end
 
 			return Keybind
