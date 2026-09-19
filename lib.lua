@@ -1,6 +1,7 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
@@ -2261,7 +2262,8 @@ function redzlib:MakeWindow(Configs)
 					ImageColor3 = Theme["Color Dark Text"]
 				})
 				
-				local InputMaxCharacters = 18
+				local MaxTextSize = 11
+				local MinTextSize = 7
 				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
 					Size = UDim2.new(1, -25, 1, 0),
 					Position = UDim2.new(0, 23, 0, 0),
@@ -2273,13 +2275,27 @@ function redzlib:MakeWindow(Configs)
 					PlaceholderColor3 = Theme["Color Dark Text"],
 					TextColor3 = Theme["Color Text"],
 					TextSize = 11,
-					TextXAlignment = Enum.TextXAlignment.Left
+					TextXAlignment = "Left"
 				}), "Text")
-
 				SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
-					if #SearchInput.Text > InputMaxCharacters then
-						SearchInput.Text = SearchInput.Text:sub(1, InputMaxCharacters)
+					local Text = SearchInput.Text
+					local TextSize = MaxTextSize
+
+					for Size = MaxTextSize, MinTextSize, -1 do
+						local Bounds = TextService:GetTextSize(
+							Text,
+							Size,
+							SearchInput.Font,
+							Vector2.new(math.huge, SearchInput.AbsoluteSize.Y)
+						)
+
+						if Bounds.X <= SearchInput.AbsoluteSize.X then
+							TextSize = Size
+							break
+						end
 					end
+
+					SearchInput.TextSize = TextSize
 				end)
 
 				SearchMessage = InsertTheme(Create("TextLabel", DropFrame, {
