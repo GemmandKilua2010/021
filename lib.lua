@@ -2246,7 +2246,7 @@ function redzlib:MakeWindow(Configs)
 
 			if DSearch then
 				SearchFrame = InsertTheme(Create("Frame", DropFrame, {
-					Size = UDim2.new(1, -16, 0, 25),
+					Size = UDim2.new(1, -16, 0, 24),
 					Position = UDim2.new(0, 8, 0, 5),
 					BackgroundColor3 = Theme["Color Stroke"]
 				}), "Stroke") Make("Corner", SearchFrame, UDim.new(0, 4))
@@ -2261,7 +2261,7 @@ function redzlib:MakeWindow(Configs)
 				})
 
 				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
-					Size = UDim2.new(1, -32, 1, 0),
+					Size = UDim2.new(1, -30, 1, 0),
 					Position = UDim2.new(0, 28, 0, 0),
 					BackgroundTransparency = 1,
 					ClearTextOnFocus = false,
@@ -2273,12 +2273,24 @@ function redzlib:MakeWindow(Configs)
 					TextSize = 12,
 					TextXAlignment = "Left"
 				}), "Text")
+
+				SearchMessage = InsertTheme(Create("TextLabel", DropFrame, {
+					Size = UDim2.new(1, -16, 0, 30),
+					Position = UDim2.new(0, 8, 0, 38),
+					BackgroundTransparency = 1,
+					Font = Enum.Font.GothamBold,
+					Text = "Nenhuma opção encontrada",
+					TextColor3 = Theme["Color Dark Text"],
+					TextSize = 12,
+					TextXAlignment = "Center",
+					Visible = false
+				}), "Text")
 			end
 
 			local ScrollFrame = InsertTheme(Create("ScrollingFrame", DropFrame, {
+				Size = DSearch and UDim2.new(1, 0, 1, -34) or UDim2.new(1, 0, 1, 0),
+				Position = DSearch and UDim2.new(0, 0, 0, 34) or UDim2.new(0, 0, 0, 0),
 				ScrollBarImageColor3 = Theme["Color Theme"],
-				Size = DSearch and UDim2.new(1, 0, 1, -35) or UDim2.new(1, 0, 1, 0),
-				Position = DSearch and UDim2.new(0, 0, 0, 35) or UDim2.new(0, 0, 0, 0),
 				ScrollBarThickness = 1.5,
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -2297,20 +2309,6 @@ function redzlib:MakeWindow(Configs)
 					Padding = UDim.new(0, 4)
 				})
 			}), "ScrollBar")
-
-			if DSearch then
-				SearchMessage = InsertTheme(Create("TextLabel", ScrollFrame, {
-					Name = "SearchMessage",
-					Size = UDim2.new(1, 0, 0, 25),
-					BackgroundTransparency = 1,
-					Font = Enum.Font.GothamBold,
-					Text = "Nenhuma opção encontrada",
-					TextColor3 = Theme["Color Dark Text"],
-					TextSize = 12,
-					TextXAlignment = "Center",
-					Visible = false
-				}), "Text")
-			end
 
 			local ScrollSize, WaitClick = 5
 
@@ -2337,13 +2335,16 @@ function redzlib:MakeWindow(Configs)
 				local Count = 0
 
 				for _, Frame in pairs(ScrollFrame:GetChildren()) do
-					if Frame:IsA("Frame") and Frame.Name == "Option" then
+					if Frame:IsA("Frame") or Frame.Name == "Option" then
 						Count = Count + 1
 					end
 				end
 
-				local BaseSize = (math.clamp(Count, 0, 10) * 25) + 10
-				ScrollSize = DSearch and BaseSize + 35 or BaseSize
+				ScrollSize = (math.clamp(Count, 0, 10) * 25) + 10
+
+				if DSearch then
+					ScrollSize = ScrollSize + 34
+				end
 
 				if NoClickFrame.Visible then
 					NoClickFrame.Visible = true
@@ -2486,7 +2487,9 @@ function redzlib:MakeWindow(Configs)
 						CreateTween({
 							Nodes[2],
 							"Size",
-							IsActive and UDim2.fromOffset(4, 14) or UDim2.fromOffset(4, 4),
+							IsActive
+								and UDim2.fromOffset(4, 14)
+								or UDim2.fromOffset(4, 4),
 							0.35
 						})
 
@@ -2510,9 +2513,10 @@ function redzlib:MakeWindow(Configs)
 					local Found = false
 
 					for _, Value in pairs(Options) do
+						local Button = Value.nodes[1]
 						local Match = SearchText == "" or Value.Name:lower():find(SearchText, 1, true)
 
-						Value.nodes[1].Visible = Match
+						Button.Visible = Match
 
 						if Match then
 							Found = true
@@ -2520,11 +2524,6 @@ function redzlib:MakeWindow(Configs)
 					end
 
 					SearchMessage.Visible = SearchText ~= "" and not Found
-
-					if SearchText ~= "" and not Found then
-						SearchMessage.Parent = ScrollFrame
-					end
-
 					ScrollFrame.CanvasPosition = Vector2.new(0, 0)
 				end
 
@@ -2626,10 +2625,6 @@ function redzlib:MakeWindow(Configs)
 						IsSelected,
 						OptioneName
 					}
-
-					if DSearch then
-						Button.Visible = true
-					end
 				end
 
 				RemoveOption = function(index, Value)
@@ -2648,10 +2643,6 @@ function redzlib:MakeWindow(Configs)
 					end
 
 					UpdateSelected()
-
-					if DSearch then
-						UpdateSearch()
-					end
 				end
 
 				GetOptions = function()
@@ -2741,7 +2732,6 @@ function redzlib:MakeWindow(Configs)
 				UpdateSelected()
 
 				if DSearch then
-					SearchInput.Text = ""
 					UpdateSearch()
 				end
 			end
