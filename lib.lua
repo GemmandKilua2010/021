@@ -2202,7 +2202,8 @@ function redzlib:MakeWindow(Configs)
 				Position = UDim2.new(1, -10, 0.5),
 				AnchorPoint = Vector2.new(1, 0.5),
 				BackgroundColor3 = Theme["Color Stroke"]
-			}), "Stroke") Make("Corner", SelectedFrame, UDim.new(0, 4))
+			}), "Stroke")
+			Make("Corner", SelectedFrame, UDim.new(0, 4))
 
 			local ActiveLabel = InsertTheme(Create("TextLabel", SelectedFrame, {
 				Size = UDim2.new(0.85, 0, 0.85, 0),
@@ -2239,10 +2240,14 @@ function redzlib:MakeWindow(Configs)
 				Name = "DropdownFrame",
 				ClipsDescendants = true,
 				Active = true
-			}) Make("Corner", DropFrame) Make("Stroke", DropFrame) Make("Gradient", DropFrame, {Rotation = 60})
+			})
+			Make("Corner", DropFrame)
+			Make("Stroke", DropFrame)
+			Make("Gradient", DropFrame, {Rotation = 60})
 
 			local SearchFrame
 			local SearchIcon
+			local SearchInputFrame
 			local SearchInput
 			local SearchMessage
 
@@ -2251,7 +2256,8 @@ function redzlib:MakeWindow(Configs)
 					Size = UDim2.new(1, -16, 0, 21),
 					Position = UDim2.new(0, 8, 0, 5),
 					BackgroundColor3 = Theme["Color Hub 2"]
-				}), "Stroke") Make("Corner", SearchFrame, UDim.new(0, 4))
+				}), "Stroke")
+				Make("Corner", SearchFrame, UDim.new(0, 4))
 
 				SearchIcon = Create("ImageLabel", SearchFrame, {
 					Size = UDim2.fromOffset(12, 12),
@@ -2261,12 +2267,17 @@ function redzlib:MakeWindow(Configs)
 					Image = "rbxassetid://10734943674",
 					ImageColor3 = Theme["Color Dark Text"]
 				})
-				
-				local MaxTextSize = 11
-				local MinTextSize = 7
-				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
-					Size = UDim2.new(1, -25, 1, 0),
-					Position = UDim2.new(0, 23, 0, 0),
+
+				SearchInputFrame = Create("Frame", SearchFrame, {
+					Size = UDim2.new(1, -34, 1, -4),
+					Position = UDim2.new(0, 27, 0, 2),
+					BackgroundTransparency = 1,
+					ClipsDescendants = true
+				})
+
+				SearchInput = InsertTheme(Create("TextBox", SearchInputFrame, {
+					Size = UDim2.new(1, 0, 1, 0),
+					Position = UDim2.new(0, 0, 0, 0),
 					BackgroundTransparency = 1,
 					ClearTextOnFocus = false,
 					Font = Enum.Font.GothamBold,
@@ -2274,29 +2285,10 @@ function redzlib:MakeWindow(Configs)
 					PlaceholderText = "Pesquisar...",
 					PlaceholderColor3 = Theme["Color Dark Text"],
 					TextColor3 = Theme["Color Text"],
-					TextSize = 11,
-					TextXAlignment = "Left"
+					TextScaled = true,
+					TextXAlignment = "Left",
+					TextYAlignment = "Center"
 				}), "Text")
-				SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
-					local Text = SearchInput.Text
-					local TextSize = MaxTextSize
-
-					for Size = MaxTextSize, MinTextSize, -1 do
-						local Bounds = TextService:GetTextSize(
-							Text,
-							Size,
-							SearchInput.Font,
-							Vector2.new(math.huge, SearchInput.AbsoluteSize.Y)
-						)
-
-						if Bounds.X <= SearchInput.AbsoluteSize.X then
-							TextSize = Size
-							break
-						end
-					end
-
-					SearchInput.TextSize = TextSize
-				end)
 
 				SearchMessage = InsertTheme(Create("TextLabel", DropFrame, {
 					Size = UDim2.new(1, -16, 0, 20),
@@ -2340,9 +2332,29 @@ function redzlib:MakeWindow(Configs)
 
 			local function Disable()
 				WaitClick = true
-				CreateTween({Arrow, "Rotation", 0, 0.2})
-				CreateTween({DropFrame, "Size", UDim2.new(0, 152, 0, 0), 0.2, true})
-				CreateTween({Arrow, "ImageColor3", Color3.fromRGB(255, 255, 255), 0.2})
+
+				CreateTween({
+					Arrow,
+					"Rotation",
+					0,
+					0.2
+				})
+
+				CreateTween({
+					DropFrame,
+					"Size",
+					UDim2.new(0, 152, 0, 0),
+					0.2,
+					true
+				})
+
+				CreateTween({
+					Arrow,
+					"ImageColor3",
+					Color3.fromRGB(255, 255, 255),
+					0.2
+				})
+
 				Arrow.Image = "rbxassetid://10709791523"
 				NoClickFrame.Visible = false
 
@@ -2374,25 +2386,60 @@ function redzlib:MakeWindow(Configs)
 
 				if NoClickFrame.Visible then
 					NoClickFrame.Visible = true
-					CreateTween({DropFrame, "Size", GetFrameSize(), 0.2, true})
+					CreateTween({
+						DropFrame,
+						"Size",
+						GetFrameSize(),
+						0.2,
+						true
+					})
 				end
 			end
 
 			local function Minimize()
-				if WaitClick then return end
+				if WaitClick then
+					return
+				end
 
 				WaitClick = true
 
 				if NoClickFrame.Visible then
 					Arrow.Image = "rbxassetid://10709791523"
-					CreateTween({Arrow, "ImageColor3", Color3.fromRGB(255, 255, 255), 0.2})
-					CreateTween({DropFrame, "Size", UDim2.new(0, 152, 0, 0), 0.2, true})
+
+					CreateTween({
+						Arrow,
+						"ImageColor3",
+						Color3.fromRGB(255, 255, 255),
+						0.2
+					})
+
+					CreateTween({
+						DropFrame,
+						"Size",
+						UDim2.new(0, 152, 0, 0),
+						0.2,
+						true
+					})
+
 					NoClickFrame.Visible = false
 				else
 					NoClickFrame.Visible = true
 					Arrow.Image = "rbxassetid://10709790948"
-					CreateTween({Arrow, "ImageColor3", Theme["Color Theme"], 0.2})
-					CreateTween({DropFrame, "Size", GetFrameSize(), 0.2, true})
+
+					CreateTween({
+						Arrow,
+						"ImageColor3",
+						Theme["Color Theme"],
+						0.2
+					})
+
+					CreateTween({
+						DropFrame,
+						"Size",
+						GetFrameSize(),
+						0.2,
+						true
+					})
 				end
 
 				WaitClick = false
@@ -2418,7 +2465,13 @@ function redzlib:MakeWindow(Configs)
 				local AnchorPoint = FramePos.Y > ScreenSize.Y / 1.4 and 1 or ScrollSize > 80 and 0.5 or 0
 
 				DropFrame.AnchorPoint = Vector2.new(0, AnchorPoint)
-				CreateTween({DropFrame, "Position", NewPos, 0.1})
+
+				CreateTween({
+					DropFrame,
+					"Position",
+					NewPos,
+					0.1
+				})
 			end
 
 			local AddNewOptions, GetOptions, AddOption, RemoveOption, Selected
@@ -2438,6 +2491,7 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				Selected = MultiSelect and {} or CheckFlag(Flag) and GetFlag(Flag) or Default[1]
+
 				local Options = {}
 
 				if MultiSelect then
@@ -2550,7 +2604,9 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				local function Select(Option)
-					if not Option then return end
+					if not Option then
+						return
+					end
 
 					if MultiSelect then
 						local CurrentCount = GetSelectedCount()
@@ -2604,6 +2660,7 @@ function redzlib:MakeWindow(Configs)
 
 					if MultiSelect then
 						local Stats = Selected[Name] == true
+
 						Selected[Name] = Stats
 						Options[Name].Stats = Stats
 					end
@@ -2614,7 +2671,6 @@ function redzlib:MakeWindow(Configs)
 						Position = UDim2.new(0, 0, 0.5),
 						AnchorPoint = Vector2.new(0, 0.5)
 					})
-
 					Make("Corner", OptionButton, UDim.new(0, 4))
 
 					local IsSelected = InsertTheme(Create("Frame", OptionButton, {
