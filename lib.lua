@@ -2191,6 +2191,7 @@ function redzlib:MakeWindow(Configs)
 			local DMultiSelect = Configs.MultiSelect or false
 			local DMultiLine = Configs.MultiLine or false
 			local DMultiOptions = Configs.MultiOptions or {}
+			local DSearch = Configs.Search or false
 			local Callback = Funcs:GetCallback(Configs, 4)
 
 			local Button, LabelFunc = ButtonFrame(Container, DName, DDesc, UDim2.new(1, -180))
@@ -2238,9 +2239,46 @@ function redzlib:MakeWindow(Configs)
 				Active = true
 			}) Make("Corner", DropFrame) Make("Stroke", DropFrame) Make("Gradient", DropFrame, {Rotation = 60})
 
+			local SearchFrame
+			local SearchIcon
+			local SearchInput
+			local SearchMessage
+
+			if DSearch then
+				SearchFrame = InsertTheme(Create("Frame", DropFrame, {
+					Size = UDim2.new(1, -16, 0, 25),
+					Position = UDim2.new(0, 8, 0, 5),
+					BackgroundColor3 = Theme["Color Stroke"]
+				}), "Stroke") Make("Corner", SearchFrame, UDim.new(0, 4))
+
+				SearchIcon = Create("ImageLabel", SearchFrame, {
+					Size = UDim2.fromOffset(14, 14),
+					Position = UDim2.new(0, 7, 0.5),
+					AnchorPoint = Vector2.new(0, 0.5),
+					BackgroundTransparency = 1,
+					Image = "rbxassetid://10734943674",
+					ImageColor3 = Theme["Color Dark Text"]
+				})
+
+				SearchInput = InsertTheme(Create("TextBox", SearchFrame, {
+					Size = UDim2.new(1, -32, 1, 0),
+					Position = UDim2.new(0, 28, 0, 0),
+					BackgroundTransparency = 1,
+					ClearTextOnFocus = false,
+					Font = Enum.Font.Gotham,
+					Text = "",
+					PlaceholderText = "Pesquisar...",
+					PlaceholderColor3 = Theme["Color Dark Text"],
+					TextColor3 = Theme["Color Text"],
+					TextSize = 12,
+					TextXAlignment = "Left"
+				}), "Text")
+			end
+
 			local ScrollFrame = InsertTheme(Create("ScrollingFrame", DropFrame, {
 				ScrollBarImageColor3 = Theme["Color Theme"],
-				Size = UDim2.new(1, 0, 1, 0),
+				Size = DSearch and UDim2.new(1, 0, 1, -35) or UDim2.new(1, 0, 1, 0),
+				Position = DSearch and UDim2.new(0, 0, 0, 35) or UDim2.new(0, 0, 0, 0),
 				ScrollBarThickness = 1.5,
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -2260,6 +2298,20 @@ function redzlib:MakeWindow(Configs)
 				})
 			}), "ScrollBar")
 
+			if DSearch then
+				SearchMessage = InsertTheme(Create("TextLabel", ScrollFrame, {
+					Name = "SearchMessage",
+					Size = UDim2.new(1, 0, 0, 25),
+					BackgroundTransparency = 1,
+					Font = Enum.Font.GothamBold,
+					Text = "Nenhuma opção encontrada",
+					TextColor3 = Theme["Color Dark Text"],
+					TextSize = 12,
+					TextXAlignment = "Center",
+					Visible = false
+				}), "Text")
+			end
+
 			local ScrollSize, WaitClick = 5
 
 			local function Disable()
@@ -2269,6 +2321,11 @@ function redzlib:MakeWindow(Configs)
 				CreateTween({Arrow, "ImageColor3", Color3.fromRGB(255, 255, 255), 0.2})
 				Arrow.Image = "rbxassetid://10709791523"
 				NoClickFrame.Visible = false
+
+				if SearchInput then
+					SearchInput:ReleaseFocus()
+				end
+
 				WaitClick = false
 			end
 
@@ -2280,12 +2337,13 @@ function redzlib:MakeWindow(Configs)
 				local Count = 0
 
 				for _, Frame in pairs(ScrollFrame:GetChildren()) do
-					if Frame:IsA("Frame") or Frame.Name == "Option" then
+					if Frame:IsA("Frame") and Frame.Name == "Option" then
 						Count = Count + 1
 					end
 				end
 
-				ScrollSize = (math.clamp(Count, 0, 10) * 25) + 10
+				local BaseSize = (math.clamp(Count, 0, 10) * 25) + 10
+				ScrollSize = DSearch and BaseSize + 35 or BaseSize
 
 				if NoClickFrame.Visible then
 					NoClickFrame.Visible = true
@@ -2316,11 +2374,13 @@ function redzlib:MakeWindow(Configs)
 			local function CalculatePos()
 				local FramePos = SelectedFrame.AbsolutePosition
 				local ScreenSize = ScreenGui.AbsoluteSize
+
 				local ClampX = math.clamp(
 					(FramePos.X / UIScale),
 					0,
 					ScreenSize.X / UIScale - DropFrame.Size.X.Offset
 				)
+
 				local ClampY = math.clamp(
 					(FramePos.Y / UIScale),
 					0,
@@ -2416,9 +2476,6 @@ function redzlib:MakeWindow(Configs)
 						local Nodes = Value.nodes
 						local IsActive = MultiSelect and Value.Stats or Value.Value == Selected
 
-						-- IsSelected original:
-						-- selecionado = barra |
-						-- desmarcado = completamente invisível
 						CreateTween({
 							Nodes[2],
 							"BackgroundTransparency",
@@ -2429,9 +2486,7 @@ function redzlib:MakeWindow(Configs)
 						CreateTween({
 							Nodes[2],
 							"Size",
-							IsActive
-								and UDim2.fromOffset(4, 14)
-								or UDim2.fromOffset(4, 4),
+							IsActive and UDim2.fromOffset(4, 14) or UDim2.fromOffset(4, 4),
 							0.35
 						})
 
@@ -2444,6 +2499,33 @@ function redzlib:MakeWindow(Configs)
 					end
 
 					UpdateLabel()
+				end
+
+				local function UpdateSearch()
+					if not DSearch or not SearchInput then
+						return
+					end
+
+					local SearchText = SearchInput.Text:lower():gsub("^%s*(.-)%s*$", "%1")
+					local Found = false
+
+					for _, Value in pairs(Options) do
+						local Match = SearchText == "" or Value.Name:lower():find(SearchText, 1, true)
+
+						Value.nodes[1].Visible = Match
+
+						if Match then
+							Found = true
+						end
+					end
+
+					SearchMessage.Visible = SearchText ~= "" and not Found
+
+					if SearchText ~= "" and not Found then
+						SearchMessage.Parent = ScrollFrame
+					end
+
+					ScrollFrame.CanvasPosition = Vector2.new(0, 0)
 				end
 
 				local function Select(Option)
@@ -2544,6 +2626,10 @@ function redzlib:MakeWindow(Configs)
 						IsSelected,
 						OptioneName
 					}
+
+					if DSearch then
+						Button.Visible = true
+					end
 				end
 
 				RemoveOption = function(index, Value)
@@ -2562,6 +2648,10 @@ function redzlib:MakeWindow(Configs)
 					end
 
 					UpdateSelected()
+
+					if DSearch then
+						UpdateSearch()
+					end
 				end
 
 				GetOptions = function()
@@ -2590,6 +2680,10 @@ function redzlib:MakeWindow(Configs)
 
 					CallbackSelected()
 					UpdateSelected()
+
+					if DSearch then
+						UpdateSearch()
+					end
 				end
 
 				for Index, Value in pairs(DOptions) do
@@ -2598,6 +2692,10 @@ function redzlib:MakeWindow(Configs)
 
 				CallbackSelected()
 				UpdateSelected()
+
+				if DSearch then
+					SearchInput:GetPropertyChangedSignal("Text"):Connect(UpdateSearch)
+				end
 			end
 
 			Button.Activated:Connect(Minimize)
@@ -2641,6 +2739,11 @@ function redzlib:MakeWindow(Configs)
 
 				CalculateSize()
 				UpdateSelected()
+
+				if DSearch then
+					SearchInput.Text = ""
+					UpdateSearch()
+				end
 			end
 
 			function Dropdown:Remove(Option)
