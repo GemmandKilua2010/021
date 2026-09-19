@@ -2812,6 +2812,10 @@ function redzlib:MakeWindow(Configs)
 				return TextBoxInput.Text
 			end
 
+			function TextBox:GetPlaceholder()
+				return TextBoxInput.PlaceholderText
+			end
+
 			function TextBox:Set(Text)
 				if type(Text) ~= "string" then
 					return
@@ -2819,6 +2823,14 @@ function redzlib:MakeWindow(Configs)
 
 				TextBoxInput.Text = Text
 				Input()
+			end
+
+			function TextBox:SetPlaceholder(Text)
+				if type(Text) ~= "string" then
+					return
+				end
+
+				TextBoxInput.PlaceholderText = Text
 			end
 
 			function TextBox:Callback(Func)
@@ -2842,6 +2854,158 @@ function redzlib:MakeWindow(Configs)
 			end
 
 			return TextBox
+		end
+		function Tab:AddKeybind(Configs)
+			local TName = Configs[1] or Configs.Name or Configs.Title or "Keybind"
+			local TDesc = Configs.Desc or Configs.Description or ""
+			local TDefault = Configs[2] or Configs.Default or Enum.KeyCode.G
+			local Callback = Funcs:GetCallback(Configs, 3)
+			local BlockedKey = Configs.BlockedKey or {}
+
+			if type(TDefault) == "string" then
+				TDefault = Enum.KeyCode[TDefault]
+			end
+
+			if typeof(TDefault) ~= "EnumItem" or TDefault.EnumType ~= Enum.KeyCode then
+				TDefault = Enum.KeyCode.G
+			end
+
+			local Button, LabelFunc = ButtonFrame(Container, TName, TDesc, UDim2.new(1, -38))
+
+			local SelectedFrame = InsertTheme(Create("Frame", Button, {
+				Size = UDim2.new(0, 100, 0, 22),
+				Position = UDim2.new(1, -10, 0.5),
+				AnchorPoint = Vector2.new(1, 0.5),
+				BackgroundColor3 = Theme["Color Stroke"]
+			}), "Stroke")
+
+			Make("Corner", SelectedFrame, UDim.new(0, 4))
+
+			local KeyButton = InsertTheme(Create("TextButton", SelectedFrame, {
+				Size = UDim2.new(1, 0, 1, 0),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamBold,
+				TextScaled = true,
+				TextColor3 = Theme["Color Text"],
+				Text = TDefault.Name,
+				AutoButtonColor = false
+			}), "Text")
+
+			local Keybind = {}
+			local CurrentKey = TDefault
+			local Waiting = false
+
+			local function IsBlocked(Key)
+				if typeof(Key) ~= "EnumItem" or Key.EnumType ~= Enum.KeyCode then
+					return true
+				end
+
+				for Index, Value in pairs(BlockedKey) do
+					if type(Index) == "number" then
+						if type(Value) == "string" then
+							Value = Enum.KeyCode[Value]
+						end
+
+						if Key == Value then
+							return true
+						end
+					end
+				end
+
+				if BlockedKey.Number and Key.Name:match("^%d$") then
+					return true
+				end
+
+				if BlockedKey.Strings and Key.Name:match("^[A-Z]$") then
+					return true
+				end
+
+				return false
+			end
+
+			local function SetKey(Key)
+				if type(Key) == "string" then
+					Key = Enum.KeyCode[Key]
+				end
+
+				if typeof(Key) ~= "EnumItem" or Key.EnumType ~= Enum.KeyCode then
+					return
+				end
+
+				if IsBlocked(Key) then
+					return
+				end
+
+				CurrentKey = Key
+				KeyButton.Text = Key.Name
+			end
+
+			KeyButton.MouseButton1Click:Connect(function()
+				if Waiting then
+					return
+				end
+
+				Waiting = true
+				KeyButton.Text = "..."
+			end)
+
+			UIS.InputBegan:Connect(function(Input, GameProcessed)
+				if Waiting then
+					if Input.UserInputType ~= Enum.UserInputType.Keyboard then
+						return
+					end
+
+					if IsBlocked(Input.KeyCode) then
+						return
+					end
+
+					Waiting = false
+					SetKey(Input.KeyCode)
+					return
+				end
+
+				if GameProcessed then
+					return
+				end
+
+				if Input.UserInputType ~= Enum.UserInputType.Keyboard then
+					return
+				end
+
+				if Input.KeyCode == CurrentKey then
+					Funcs:FireCallback(Callback, CurrentKey)
+				end
+			end)
+
+			function Keybind:SetKeybind(Key)
+				if type(Key) == "string" then
+					Key = Enum.KeyCode[Key]
+				end
+
+				SetKey(Key)
+			end
+
+			function Keybind:GetKeybind()
+				return CurrentKey
+			end
+
+			function Keybind:Callback(Func)
+				if type(Func) ~= "function" then
+					return
+				end
+
+				Callback = Func
+			end
+
+			function Keybind:Visible(...)
+				Funcs:ToggleVisible(Button, ...)
+			end
+
+			function Keybind:Destroy()
+				Button:Destroy()
+			end
+
+			return Keybind
 		end
 		function Tab:AddDiscordInvite(Configs)
 			local Title = Configs[1] or Configs.Name or Configs.Title or "Discord"
