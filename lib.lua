@@ -4511,12 +4511,15 @@ function redzlib:MakeWindow(Configs)
 
 			Make("Corner", HueBackground, UDim.new(0.5, 0))
 
-			local HueIndicator = Create("Frame", HueBackground, {
+			local HueIndicator = Create("TextLabel", HueBackground, {
 				Size = UDim2.new(0, 7, 0, 22),
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = Color3.fromRGB(230, 230, 230),
-				BackgroundTransparency = 0.1,
-				ZIndex = 2
+				Position = UDim2.new(0, 0, 0.5, 0),
+				BackgroundTransparency = 1,
+				Text = "|",
+				TextSize = 18,
+				TextColor3 = Color3.fromRGB(255, 255, 255),
+				ZIndex = 5
 			})
 
 			Make("Corner", HueIndicator)
@@ -4678,24 +4681,27 @@ function redzlib:MakeWindow(Configs)
 				)
 			end
 
+			local function UpdateIndicator(Indicator, Background, Value)
+				local Width = Background.AbsoluteSize.X
+				local Half = Indicator.AbsoluteSize.X / 2
+
+				if Width <= 0 then
+					return
+				end
+
+				local Scale = math.clamp(
+					(Value * (Width - Half * 2) + Half) / Width,
+					0,
+					1
+				)
+
+				Indicator.Position = UDim2.new(Scale, 0, 0.5, 0)
+			end
+
 			local function UpdateIndicators()
-				HueIndicator.Position = GetIndicatorPosition(
-					HueBackground,
-					HueIndicator,
-					Hue
-				)
-
-				SaturationIndicator.Position = GetIndicatorPosition(
-					SaturationBackground,
-					SaturationIndicator,
-					Saturation
-				)
-
-				BrightnessIndicator.Position = GetIndicatorPosition(
-					BrightnessBackground,
-					BrightnessIndicator,
-					Brightness
-				)
+				UpdateIndicator(HueIndicator, HueBackground, Hue)
+				UpdateIndicator(SaturationIndicator, SaturationBackground, Saturation)
+				UpdateIndicator(BrightnessIndicator, BrightnessBackground, Brightness)
 			end
 
 			local function UpdateGradients()
@@ -4844,19 +4850,12 @@ function redzlib:MakeWindow(Configs)
 
 			local function GetSliderValue(Input, Background, Indicator)
 				local Width = Background.AbsoluteSize.X
-
-				if Width <= 0 then
-					return 0
-				end
-
-				local IndicatorWidth = Indicator.AbsoluteSize.X
-				local HalfWidth = IndicatorWidth / 2
-				local Range = math.max(Width - IndicatorWidth, 1)
-
 				local X = Input.Position.X - Background.AbsolutePosition.X
-				local Value = (X - HalfWidth) / Range
+				local Half = Indicator.AbsoluteSize.X / 2
 
-				return math.clamp(Value, 0, 1)
+				local Range = math.max(Width - Half * 2, 1)
+
+				return math.clamp((X - Half) / Range, 0, 1)
 			end
 
 			local HueDragging = false
