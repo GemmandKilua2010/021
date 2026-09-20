@@ -1681,7 +1681,7 @@ function redzlib:MakeWindow(Configs)
 	end
 
 	function Window:IsOpen()
-		return Hub.Visible
+		return hub.Visible
 	end
 
 	function Window:CloseBtn()
