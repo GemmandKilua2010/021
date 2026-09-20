@@ -4816,27 +4816,28 @@ function redzlib:MakeWindow(Configs)
 						UDim2.new(1, 0, 0, 225),
 						0.25
 					})
-					else
-						CreateTween({
-							Arrow,
-							"Rotation",
-							0,
-							0.25
-						})
+				else
+					CreateTween({
+						Arrow,
+						"Rotation",
+						0,
+						0.25
+					})
 
-						local Tween = CreateTween({
-							PickerFrame,
-							"Size",
-							UDim2.new(1, 0, 0, 0.0),
-							0.35
-						})
+					local Tween = CreateTween({
+						PickerFrame,
+						"Size",
+						UDim2.new(1, 0, 0, 0),
+						0.35
+					})
 
-						Tween.Completed:Once(function()
-							if not Expanded and PickerFrame.Parent then
-								PickerFrame.Visible = false
-							end
-						end)
-					end
+					Tween.Completed:Once(function()
+						if not Expanded and PickerFrame.Parent then
+							PickerFrame.Size = UDim2.new(1, 0, 0, 0)
+							PickerFrame.Visible = false
+						end
+					end)
+				end
 
 				task.defer(UpdateIndicators)
 			end
