@@ -1674,14 +1674,26 @@ function redzlib:MakeWindow(Configs)
 	local KeybindRegistry = {}
 
 	local CloseCallback
+	local MinimizeCallback
+	
 	function Window:Close(Callback)
 		if type(Callback) == "function" then
 			CloseCallback = Callback
 		end
 	end
 
+	function Window:Minimize(Callback)
+		if type(Callback) == "function" then
+			MinimizeCallback = Callback
+		end
+	end
+
+
 	function Window:IsOpen()
 		return MainFrame.Visible
+	end
+	function Window:IsMinimize()
+		return Minimized
 	end
 
 	function Window:CloseBtn()
@@ -1717,7 +1729,10 @@ function redzlib:MakeWindow(Configs)
 			CreateTween({MainFrame, "Size", UDim2.fromOffset(MainFrame.Size.X.Offset, 28), 0.25, true})
 			Minimized = true
 		end
-		
+
+		if MinimizeCallback then
+			MinimizeCallback(Minimized)
+		end
 		WaitClick = false
 	end
     function Window:SetTitle(NewTitle)
@@ -1755,9 +1770,6 @@ function redzlib:MakeWindow(Configs)
     function Window:GetVisibility()
         return MainFrame.Visible
     end
-	function Window:Minimize()
-		Window:SetVisibility(not Window:GetVisibility())
-	end
 	function Window:AddMinimizeButton(Configs)
 		local Button = MakeDrag(Create("ImageButton", ScreenGui, {
 			Size = UDim2.fromOffset(35, 35),
@@ -1778,7 +1790,7 @@ function redzlib:MakeWindow(Configs)
 		end
 		
 		SetProps(Button, Configs.Button)
-		Button.Activated:Connect(Window.Minimize)
+		Button.Activated:Connect(Window:SetVisibility(not Window:GetVisibility()))
 		
 		return {
 			Stroke = Stroke,
