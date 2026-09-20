@@ -1493,10 +1493,11 @@ function redzlib:SetScale(NewScale)
 end
 
 function redzlib:MakeWindow(Configs)
-	local WTitle = Configs[1] or Configs.Name or Configs.Title or "redz Library V5"
-	local WMiniText = Configs[2] or Configs.SubTitle or "by : redz9999"
-	
-	Settings.ScriptFile = Configs[3] or Configs.SaveFolder or false
+	local WTitle = Configs[1] or Configs.Name or Configs.Title or "Library"
+	local WMiniText = Configs[2] or Configs.SubTitle or "By Specter"
+	local Keybind = Configs[3] or Configs.Keybind or Enum.KeyCode.G
+
+	Settings.ScriptFile = Configs[4] or Configs.SaveFolder or false
 	
 	local function LoadFile()
 		local File = Settings.ScriptFile
@@ -1668,7 +1669,7 @@ function redzlib:MakeWindow(Configs)
 		CloseButton,
 		MinimizeButton
 	})
-	
+
 	local Minimized, SaveSize, WaitClick
 	local Window, FirstTab = {}, false
 	local KeybindRegistry = {}
@@ -1687,7 +1688,6 @@ function redzlib:MakeWindow(Configs)
 			MinimizeCallback = Callback
 		end
 	end
-
 
 	function Window:IsOpen()
 		return MainFrame.Visible
@@ -1754,7 +1754,6 @@ function redzlib:MakeWindow(Configs)
     function Window:GetTitle()
         return Title.Text
     end
-
     function Window:GetSubTitle()
         return Title.SubTitle.Text
     end
@@ -1767,9 +1766,36 @@ function redzlib:MakeWindow(Configs)
         MainFrame.Visible = NewVisibility
     end
 
+	function Window:Visible()
+		Window:SetVisibility(not Window:GetVisibility())
+	end
+
     function Window:GetVisibility()
         return MainFrame.Visible
     end
+
+	--- 
+	
+	local WindowKeybindEnabled = Configs.Keybind or false
+	function Window:EnabledKeybind()
+		WindowKeybindEnabled = true
+	end
+	function Window:DisableKeybind()
+		WindowKeybindEnabled = false
+	end
+	function Window:IsKeybindEnabled()
+		return WindowKeybindEnabled
+	end
+	UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+		if GameProcessed then return end
+		if Input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		if not WindowKeybindEnabled then return end
+
+		Window:Visible()
+	end)
+
+	--- 
+
 	function Window:AddMinimizeButton(Configs)
 		local Button = MakeDrag(Create("ImageButton", ScreenGui, {
 			Size = UDim2.fromOffset(35, 35),
@@ -1790,7 +1816,7 @@ function redzlib:MakeWindow(Configs)
 		end
 		
 		SetProps(Button, Configs.Button)
-		Button.Activated:Connect(Window:SetVisibility(not Window:GetVisibility()))
+		Button.Activated:Connect(Window:Visible())
 		
 		return {
 			Stroke = Stroke,
