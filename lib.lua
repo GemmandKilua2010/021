@@ -1679,9 +1679,9 @@ function redzlib:MakeWindow(Configs)
 			CloseCallback = Callback
 		end
 	end
-	
+
 	function Window:IsOpen()
-		return ScreenGui.Enabled
+		return Hub.Visible
 	end
 
 	function Window:CloseBtn()
