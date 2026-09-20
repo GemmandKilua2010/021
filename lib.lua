@@ -1777,21 +1777,34 @@ function redzlib:MakeWindow(Configs)
 	--- 
 	
 	local WindowKeybindEnabled = Configs.Keybind or false
-	function Window:EnabledKeybind()
+	local WindowKeybindCooldown = false
+
+	function Window:EnableKeybind()
 		WindowKeybindEnabled = true
 	end
+
 	function Window:DisableKeybind()
 		WindowKeybindEnabled = false
 	end
+
 	function Window:IsKeybindEnabled()
 		return WindowKeybindEnabled
 	end
+
 	UserInputService.InputBegan:Connect(function(Input, GameProcessed)
 		if GameProcessed then return end
+		if WindowKeybindCooldown then return end
+		
 		if Input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-		if not WindowKeybindEnabled then return end
+		if Input.KeyCode ~= Keybind then return end
 
+		if not WindowKeybindEnabled then return end
+		WindowKeybindCooldown = true
 		Window:Visible()
+
+		task.delay(0.15, function()
+			WindowKeybindCooldown = false
+		end)
 	end)
 
 	--- 
