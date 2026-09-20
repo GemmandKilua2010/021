@@ -2194,6 +2194,7 @@ function redzlib:MakeWindow(Configs)
 			local DMultiOptions = Configs.MultiOptions or {}
 			local DSearch = Configs.Search or false
 			local OptionRenderer = Configs.OptionRenderer
+			local OnSearch = Configs.OnSearch
 			local Callback = Funcs:GetCallback(Configs, 4)
 
 			local SearchConfig = {
@@ -2578,7 +2579,7 @@ function redzlib:MakeWindow(Configs)
 
 						ActiveLabel.Text = #List > 0 and table.concat(List, ", ") or tostring(Default[1] or "...")
 					else
-						ActiveLabel.Text = Selected ~= nil and tostring(Selected) or tostring(Default[1] or "...")
+						ActiveLabel.Text = Selected ~= nil and (type(Selected) == "table" and tostring(Selected.Name or Selected.DisplayName or Selected.Label or "") or tostring(Selected)) or tostring(Default[1] or "...")
 					end
 				end
 
@@ -2875,6 +2876,10 @@ function redzlib:MakeWindow(Configs)
 							break
 						end
 					end
+				end
+
+				function Dropdown:Get()
+					return Selected
 				end
 
 				function Dropdown:Set(Val1, Clear)
