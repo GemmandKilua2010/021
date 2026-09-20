@@ -4075,6 +4075,1080 @@ function redzlib:MakeWindow(Configs)
 
 			return Keybind
 		end
+		function Tab:AddColorPicker(Configs)
+			local ColorPicker = {}
+
+			local Name = Configs[1] or Configs.Name or Configs.Title or "Cor personalizada"
+			local Description = Configs.Desc or Configs.Description or ""
+			local Callback = Funcs:GetCallback(Configs, 3)
+			local Flag = Configs[4] or Configs.Flag or false
+			local MaxRecent = Configs.MaxRecent or 8
+
+			local DisplayMode = Configs.DisplayMode or Configs.Display or "Hex"
+			local DisplayString = tostring(DisplayMode):lower():gsub("%s+", "")
+
+			local ShowHex = DisplayString:find("hex", 1, true) ~= nil
+			local ShowRGB = DisplayString:find("rgb", 1, true) ~= nil
+
+			if not ShowHex and not ShowRGB then
+				ShowHex = true
+			end
+
+			local function ParseHex(Value)
+				if typeof(Value) ~= "string" then
+					return nil
+				end
+
+				local Hex = Value:gsub("^#", ""):gsub("%s+", ""):upper()
+
+				if #Hex == 3 then
+					Hex = Hex:sub(1, 1):rep(2)
+						.. Hex:sub(2, 2):rep(2)
+						.. Hex:sub(3, 3):rep(2)
+				end
+
+				if #Hex ~= 6 or not Hex:match("^[%x]+$") then
+					return nil
+				end
+
+				local R = tonumber(Hex:sub(1, 2), 16)
+				local G = tonumber(Hex:sub(3, 4), 16)
+				local B = tonumber(Hex:sub(5, 6), 16)
+
+				if not R or not G or not B then
+					return nil
+				end
+
+				return Color3.fromRGB(R, G, B)
+			end
+
+			local function ColorToHex(Color)
+				return string.format(
+					"#%02X%02X%02X",
+					math.floor(Color.R * 255 + 0.5),
+					math.floor(Color.G * 255 + 0.5),
+					math.floor(Color.B * 255 + 0.5)
+				)
+			end
+
+			local function ColorToRGB(Color)
+				return string.format(
+					"%d,%d,%d",
+					math.floor(Color.R * 255 + 0.5),
+					math.floor(Color.G * 255 + 0.5),
+					math.floor(Color.B * 255 + 0.5)
+				)
+			end
+
+			local function ParseRGB(Value)
+				if typeof(Value) ~= "string" then
+					return nil
+				end
+
+				local R, G, B = Value:match("^(%d+),(%d+),(%d+)$")
+				R, G, B = tonumber(R), tonumber(G), tonumber(B)
+
+				if not R or not G or not B then
+					return nil
+				end
+
+				if R > 255 or G > 255 or B > 255 then
+					return nil
+				end
+
+				return Color3.fromRGB(R, G, B)
+			end
+
+			local function ParseBrickColor(Value)
+				if typeof(Value) == "BrickColor" then
+					return Value.Color, Value.Name
+				end
+
+				if typeof(Value) ~= "string" then
+					return nil
+				end
+
+				local Success, BrickColorValue = pcall(BrickColor.new, Value)
+
+				if not Success or not BrickColorValue then
+					return nil
+				end
+
+				if BrickColorValue.Name:lower() ~= Value:lower() then
+					return nil
+				end
+
+				return BrickColorValue.Color, BrickColorValue.Name
+			end
+
+			local function ParseColor(Value)
+				if typeof(Value) == "Color3" then
+					return Value, "Color3"
+				end
+
+				if typeof(Value) == "BrickColor" then
+					return Value.Color, "BrickColor"
+				end
+
+				if typeof(Value) == "string" then
+					local HexColor = ParseHex(Value)
+
+					if HexColor then
+						return HexColor, "Color3"
+					end
+
+					local BrickColorValue, BrickColorName = ParseBrickColor(Value)
+
+					if BrickColorValue then
+						return BrickColorValue, "BrickColorName"
+					end
+				end
+
+				return nil, nil
+			end
+
+			local Default = Configs[2] or Configs.Default or "#137D81"
+			local CurrentColor, DefaultFormat = ParseColor(Default)
+
+			if not CurrentColor then
+				CurrentColor = Color3.fromRGB(19, 125, 129)
+			end
+
+			if Flag and CheckFlag(Flag) then
+				local SavedColor = GetFlag(Flag)
+
+				if typeof(SavedColor) == "string" then
+					local ParsedSavedColor = ParseHex(SavedColor)
+
+					if ParsedSavedColor then
+						CurrentColor = ParsedSavedColor
+					end
+				end
+			end
+
+			local ReturnFormat =
+				Configs.ReturnFormat
+				or Configs.Format
+				or Configs.OutputFormat
+				or DefaultFormat
+				or "Color3"
+
+			local ReturnFormatString = tostring(ReturnFormat):lower():gsub("%s+", "")
+			local OutputFormat = "Color3"
+
+			if ReturnFormatString:find("brickcolorname", 1, true)
+				or ReturnFormatString == "name"
+				or ReturnFormatString:find("nomedabrickcolor", 1, true)
+				or ReturnFormatString:find("nomedacor", 1, true) then
+				OutputFormat = "BrickColorName"
+			elseif ReturnFormatString:find("brickcolor", 1, true) then
+				OutputFormat = "BrickColor"
+			end
+
+			local function GetOutput(Color)
+				local Hex = ColorToHex(Color)
+
+				if OutputFormat == "BrickColor" then
+					local Success, BrickColorValue = pcall(BrickColor.new, Color)
+
+					if Success and BrickColorValue then
+						return BrickColorValue, Hex
+					end
+				elseif OutputFormat == "BrickColorName" then
+					local Success, BrickColorValue = pcall(BrickColor.new, Color)
+
+					if Success and BrickColorValue then
+						return BrickColorValue.Name, Hex
+					end
+				end
+
+				return Color, Hex
+			end
+
+			local Presets = Configs.Presets or {
+				Color3.fromRGB(108, 99, 255),
+				Color3.fromRGB(33, 150, 243),
+				Color3.fromRGB(67, 181, 129),
+				Color3.fromRGB(255, 193, 7),
+				Color3.fromRGB(255, 107, 107),
+				Color3.fromRGB(233, 30, 140),
+				Color3.fromRGB(156, 106, 222),
+				Color3.fromRGB(255, 255, 255)
+			}
+
+			local RecentColors = {}
+
+			local function HasColor(Color)
+				local Hex = ColorToHex(Color)
+
+				for _, RecentColor in ipairs(RecentColors) do
+					if ColorToHex(RecentColor) == Hex then
+						return true
+					end
+				end
+
+				return false
+			end
+
+			for Index, Color in ipairs(Presets) do
+				if Index > MaxRecent then
+					break
+				end
+
+				local ParsedColor = ParseColor(Color)
+
+				if ParsedColor and not HasColor(ParsedColor) then
+					table.insert(RecentColors, ParsedColor)
+				end
+			end
+
+			local OptionWidth = ShowHex and ShowRGB
+				and UDim2.new(1, -300)
+				or UDim2.new(1, -230)
+
+			local Option, Label = ButtonFrame(
+				Container,
+				Name,
+				Description,
+				OptionWidth,
+				"ColorPicker"
+			)
+
+			local Controls = Create("Frame", Option, {
+				Size = UDim2.new(0, 0, 0, 20),
+				AutomaticSize = Enum.AutomaticSize.X,
+				Position = UDim2.new(1, -10, 0.5, 0),
+				AnchorPoint = Vector2.new(1, 0.5),
+				BackgroundTransparency = 1
+			}, {
+				Create("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					VerticalAlignment = Enum.VerticalAlignment.Center,
+					HorizontalAlignment = Enum.HorizontalAlignment.Right,
+					SortOrder = Enum.SortOrder.LayoutOrder,
+					Padding = UDim.new(0, 8)
+				})
+			})
+
+			local HexInput
+			local RGBInput
+
+			if ShowHex then
+				local HexFrame = Create("Frame", Controls, {
+					Size = UDim2.new(0, 96, 1, 0),
+					BackgroundColor3 = Theme["Color Stroke"],
+					LayoutOrder = 1,
+					ClipsDescendants = true
+				})
+
+				InsertTheme(HexFrame, "Stroke")
+				Make("Corner", HexFrame, UDim.new(0, 5))
+
+				HexInput = Create("TextBox", HexFrame, {
+					Size = UDim2.new(1, -10, 1, 0),
+					Position = UDim2.new(0, 5, 0, 0),
+					BackgroundTransparency = 1,
+					Font = Enum.Font.GothamBold,
+					TextSize = 10,
+					TextColor3 = Theme["Color Text"],
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ClearTextOnFocus = false,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					ClipsDescendants = true,
+					Text = ColorToHex(CurrentColor)
+				})
+
+				InsertTheme(HexInput, "Text")
+			end
+
+			if ShowRGB then
+				local RGBFrame = Create("Frame", Controls, {
+					Size = UDim2.new(0, 104, 1, 0),
+					BackgroundColor3 = Theme["Color Stroke"],
+					LayoutOrder = 2,
+					ClipsDescendants = true
+				})
+
+				InsertTheme(RGBFrame, "Stroke")
+				Make("Corner", RGBFrame, UDim.new(0, 5))
+
+				RGBInput = Create("TextBox", RGBFrame, {
+					Size = UDim2.new(1, -10, 1, 0),
+					Position = UDim2.new(0, 5, 0, 0),
+					BackgroundTransparency = 1,
+					Font = Enum.Font.GothamBold,
+					TextSize = 10,
+					TextColor3 = Theme["Color Text"],
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ClearTextOnFocus = false,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					ClipsDescendants = true,
+					Text = ColorToRGB(CurrentColor)
+				})
+
+				InsertTheme(RGBInput, "Text")
+			end
+
+			local PreviewButton = Create("TextButton", Controls, {
+				Size = UDim2.new(0, 50, 1, 0),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Text = "",
+				LayoutOrder = 3
+			})
+
+			local ColorPreview = Create("Frame", PreviewButton, {
+				Size = UDim2.new(0, 20, 0, 20),
+				Position = UDim2.new(0, 0, 0.5, 0),
+				AnchorPoint = Vector2.new(0, 0.5),
+				BackgroundColor3 = CurrentColor,
+				BorderSizePixel = 0
+			})
+
+			Make("Corner", ColorPreview, UDim.new(0, 5))
+
+			local Arrow = Create("ImageLabel", PreviewButton, {
+				Size = UDim2.new(0, 16, 0, 16),
+				Position = UDim2.new(1, 0, 0.5, 0),
+				AnchorPoint = Vector2.new(1, 0.5),
+				BackgroundTransparency = 1,
+				Image = redzlib:GetIcon("chevrondown"),
+				ImageColor3 = Theme["Color Text"]
+			})
+
+			InsertTheme(Arrow, "Text")
+
+			local PickerFrame = Create("Frame", Container, {
+				Size = UDim2.new(1, 0, 0, 0),
+				BackgroundColor3 = Theme["Color Hub 2"],
+				ClipsDescendants = true,
+				Name = "Option",
+				Visible = false
+			})
+
+			InsertTheme(PickerFrame, "Hub 2")
+			Make("Corner", PickerFrame, UDim.new(0, 6))
+
+			local PickerContent = Create("Frame", PickerFrame, {
+				Size = UDim2.new(1, 0, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				BackgroundTransparency = 1
+			}, {
+				Create("UIListLayout", {
+					SortOrder = Enum.SortOrder.LayoutOrder,
+					Padding = UDim.new(0, 10)
+				}),
+				Create("UIPadding", {
+					PaddingLeft = UDim.new(0, 12),
+					PaddingRight = UDim.new(0, 12),
+					PaddingTop = UDim.new(0, 12),
+					PaddingBottom = UDim.new(0, 12)
+				})
+			})
+
+			local RecentLabel = Create("TextLabel", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 12),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamMedium,
+				TextColor3 = Theme["Color Dark Text"],
+				TextSize = 10,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Text = "Recentes",
+				LayoutOrder = 0
+			})
+
+			InsertTheme(RecentLabel, "DarkText")
+
+			local RecentHolder = Create("Frame", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 22),
+				BackgroundTransparency = 1,
+				LayoutOrder = 1
+			}, {
+				Create("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					Padding = UDim.new(0, 8)
+				})
+			})
+
+			local HueLabel = Create("TextLabel", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 12),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamMedium,
+				TextColor3 = Theme["Color Dark Text"],
+				TextSize = 10,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Text = "Matiz",
+				LayoutOrder = 2
+			})
+
+			InsertTheme(HueLabel, "DarkText")
+
+			local HueBar = Create("TextButton", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 16),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Text = "",
+				LayoutOrder = 3
+			})
+
+			local HueBackground = Create("Frame", HueBar, {
+				Size = UDim2.new(1, 0, 1, 0),
+				BorderSizePixel = 0,
+				BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			}, {
+				Create("UIGradient", {
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+						ColorSequenceKeypoint.new(1 / 6, Color3.fromHSV(1 / 6, 1, 1)),
+						ColorSequenceKeypoint.new(2 / 6, Color3.fromHSV(2 / 6, 1, 1)),
+						ColorSequenceKeypoint.new(3 / 6, Color3.fromHSV(3 / 6, 1, 1)),
+						ColorSequenceKeypoint.new(4 / 6, Color3.fromHSV(4 / 6, 1, 1)),
+						ColorSequenceKeypoint.new(5 / 6, Color3.fromHSV(5 / 6, 1, 1)),
+						ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1))
+					})
+				})
+			})
+
+			Make("Corner", HueBackground, UDim.new(0.5, 0))
+
+			local HueIndicator = Create("Frame", HueBackground, {
+				Size = UDim2.new(0, 7, 0, 22),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = Color3.fromRGB(230, 230, 230),
+				BackgroundTransparency = 0.1,
+				ZIndex = 2
+			})
+
+			Make("Corner", HueIndicator)
+
+			local SaturationLabel = Create("TextLabel", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 12),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamMedium,
+				TextColor3 = Theme["Color Dark Text"],
+				TextSize = 10,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Text = "Saturação",
+				LayoutOrder = 4
+			})
+
+			InsertTheme(SaturationLabel, "DarkText")
+
+			local SaturationBar = Create("TextButton", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 16),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Text = "",
+				LayoutOrder = 5
+			})
+
+			local SaturationBackground = Create("Frame", SaturationBar, {
+				Size = UDim2.new(1, 0, 1, 0),
+				BorderSizePixel = 0,
+				BackgroundColor3 = Color3.new(1, 1, 1)
+			})
+
+			Make("Corner", SaturationBackground, UDim.new(0.5, 0))
+
+			local SaturationGradient = Create("UIGradient", SaturationBackground)
+
+			local SaturationIndicator = Create("Frame", SaturationBackground, {
+				Size = UDim2.new(0, 7, 0, 22),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = Color3.fromRGB(230, 230, 230),
+				BackgroundTransparency = 0.1,
+				ZIndex = 2
+			})
+
+			Make("Corner", SaturationIndicator)
+
+			local BrightnessLabel = Create("TextLabel", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 12),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamMedium,
+				TextColor3 = Theme["Color Dark Text"],
+				TextSize = 10,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Text = "Brilho",
+				LayoutOrder = 6
+			})
+
+			InsertTheme(BrightnessLabel, "DarkText")
+
+			local BrightnessBar = Create("TextButton", PickerContent, {
+				Size = UDim2.new(1, 0, 0, 16),
+				BackgroundTransparency = 1,
+				AutoButtonColor = false,
+				Text = "",
+				LayoutOrder = 7
+			})
+
+			local BrightnessBackground = Create("Frame", BrightnessBar, {
+				Size = UDim2.new(1, 0, 1, 0),
+				BorderSizePixel = 0,
+				BackgroundColor3 = Color3.new(0, 0, 0)
+			})
+
+			Make("Corner", BrightnessBackground, UDim.new(0.5, 0))
+
+			local BrightnessGradient = Create("UIGradient", BrightnessBackground)
+
+			local BrightnessIndicator = Create("Frame", BrightnessBackground, {
+				Size = UDim2.new(0, 7, 0, 22),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = Color3.fromRGB(230, 230, 230),
+				BackgroundTransparency = 0.1,
+				ZIndex = 2
+			})
+
+			Make("Corner", BrightnessIndicator)
+
+			local Expanded = false
+			local CurrentColorValue = CurrentColor
+			local Hue, Saturation, Brightness = CurrentColor:ToHSV()
+
+			if Saturation == 0 then
+				Saturation = 1
+			end
+
+			local function CreateRecentButton(Parent, Color)
+				local Button = Create("TextButton", Parent, {
+					Size = UDim2.new(0, 22, 0, 22),
+					BackgroundColor3 = Color,
+					AutoButtonColor = false,
+					Text = ""
+				})
+
+				Make("Corner", Button, UDim.new(0, 5))
+
+				return Button
+			end
+
+			local SetColor
+
+			local function RefreshRecent()
+				for _, Child in ipairs(RecentHolder:GetChildren()) do
+					if Child:IsA("TextButton") then
+						Child:Destroy()
+					end
+				end
+
+				for _, Color in ipairs(RecentColors) do
+					local RecentColor = Color
+
+					CreateRecentButton(RecentHolder, RecentColor).Activated:Connect(function()
+						SetColor(RecentColor, true, true)
+					end)
+				end
+			end
+
+			local function AddRecent(Color)
+				local Hex = ColorToHex(Color)
+
+				for Index = #RecentColors, 1, -1 do
+					if ColorToHex(RecentColors[Index]) == Hex then
+						table.remove(RecentColors, Index)
+					end
+				end
+
+				table.insert(RecentColors, 1, Color)
+
+				while #RecentColors > MaxRecent do
+					table.remove(RecentColors)
+				end
+
+				RefreshRecent()
+			end
+
+			local function GetIndicatorPosition(Background, Indicator, Value)
+				local Width = Background.AbsoluteSize.X
+				local IndicatorWidth = Indicator.AbsoluteSize.X
+
+				if Width <= 0 then
+					return UDim2.new(math.clamp(Value, 0, 1), 0, 0.5, 0)
+				end
+
+				local HalfWidth = IndicatorWidth / 2
+				local Range = math.max(Width - IndicatorWidth, 1)
+				local X = HalfWidth + math.clamp(Value, 0, 1) * Range
+
+				return UDim2.fromOffset(X, 0):Lerp(
+					UDim2.fromOffset(X, Background.AbsoluteSize.Y * 0.5),
+					1
+				)
+			end
+
+			local function UpdateIndicators()
+				HueIndicator.Position = GetIndicatorPosition(
+					HueBackground,
+					HueIndicator,
+					Hue
+				)
+
+				SaturationIndicator.Position = GetIndicatorPosition(
+					SaturationBackground,
+					SaturationIndicator,
+					Saturation
+				)
+
+				BrightnessIndicator.Position = GetIndicatorPosition(
+					BrightnessBackground,
+					BrightnessIndicator,
+					Brightness
+				)
+			end
+
+			local function UpdateGradients()
+				local HueColor = Color3.fromHSV(Hue, 1, 1)
+
+				SaturationGradient.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+					ColorSequenceKeypoint.new(1, HueColor)
+				})
+
+				BrightnessGradient.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
+					ColorSequenceKeypoint.new(1, Color3.fromHSV(Hue, Saturation, 1))
+				})
+			end
+
+			SetColor = function(Color, FireCallback, AddToRecent)
+				CurrentColorValue = Color
+
+				Hue, Saturation, Brightness = Color:ToHSV()
+
+				if Saturation == 0 then
+					Saturation = 1
+				end
+
+				ColorPreview.BackgroundColor3 = Color
+
+				if HexInput and not HexInput:IsFocused() then
+					HexInput.Text = ColorToHex(Color)
+				end
+
+				if RGBInput and not RGBInput:IsFocused() then
+					RGBInput.Text = ColorToRGB(Color)
+				end
+
+				UpdateGradients()
+				UpdateIndicators()
+
+				if Flag then
+					SetFlag(Flag, ColorToHex(Color))
+				end
+
+				if AddToRecent then
+					AddRecent(Color)
+				end
+
+				if FireCallback and Callback then
+					local Value, Hex = GetOutput(Color)
+
+					Funcs:FireCallback(
+						Callback,
+						Value,
+						Hex
+					)
+				end
+			end
+
+			local function ApplyHSV(FireCallback, AddToRecent)
+				local Color = Color3.fromHSV(
+					Hue,
+					Saturation,
+					Brightness
+				)
+
+				CurrentColorValue = Color
+				ColorPreview.BackgroundColor3 = Color
+
+				if HexInput and not HexInput:IsFocused() then
+					HexInput.Text = ColorToHex(Color)
+				end
+
+				if RGBInput and not RGBInput:IsFocused() then
+					RGBInput.Text = ColorToRGB(Color)
+				end
+
+				UpdateGradients()
+				UpdateIndicators()
+
+				if Flag then
+					SetFlag(Flag, ColorToHex(Color))
+				end
+
+				if AddToRecent then
+					AddRecent(Color)
+				end
+
+				if FireCallback and Callback then
+					local Value, Hex = GetOutput(Color)
+
+					Funcs:FireCallback(
+						Callback,
+						Value,
+						Hex
+					)
+				end
+			end
+
+			local function SetExpanded(Value)
+				Expanded = Value == nil and not Expanded or Value
+
+				if Expanded then
+					PickerFrame.Visible = true
+					PickerFrame.Size = UDim2.new(1, 0, 0, 0)
+
+					CreateTween({
+						Arrow,
+						"Rotation",
+						180,
+						0.25
+					})
+
+					CreateTween({
+						PickerFrame,
+						"Size",
+						UDim2.new(1, 0, 0, 225),
+						0.25
+					})
+				else
+					CreateTween({
+						Arrow,
+						"Rotation",
+						0,
+						0.25
+					})
+
+					CreateTween({
+						PickerFrame,
+						"Size",
+						UDim2.new(1, 0, 0, 0),
+						0.25
+					})
+
+					task.delay(0.25, function()
+						if not Expanded and PickerFrame.Parent then
+							PickerFrame.Visible = false
+						end
+					end)
+				end
+
+				task.defer(UpdateIndicators)
+			end
+
+			PreviewButton.Activated:Connect(function()
+				SetExpanded()
+			end)
+
+			local function GetSliderValue(Input, Background, Indicator)
+				local Width = Background.AbsoluteSize.X
+
+				if Width <= 0 then
+					return 0
+				end
+
+				local IndicatorWidth = Indicator.AbsoluteSize.X
+				local HalfWidth = IndicatorWidth / 2
+				local Range = math.max(Width - IndicatorWidth, 1)
+
+				local X = Input.Position.X - Background.AbsolutePosition.X
+				local Value = (X - HalfWidth) / Range
+
+				return math.clamp(Value, 0, 1)
+			end
+
+			local HueDragging = false
+			local SaturationDragging = false
+			local BrightnessDragging = false
+
+			local function UpdateHue(Input)
+				Hue = GetSliderValue(Input, HueBackground, HueIndicator)
+				ApplyHSV(false, false)
+			end
+
+			local function UpdateSaturation(Input)
+				Saturation = GetSliderValue(Input, SaturationBackground, SaturationIndicator)
+				ApplyHSV(false, false)
+			end
+
+			local function UpdateBrightness(Input)
+				Brightness = GetSliderValue(Input, BrightnessBackground, BrightnessIndicator)
+				ApplyHSV(false, false)
+			end
+
+			local function StartDrag(Indicator, CallbackFunction, Input)
+				CreateTween({
+					Indicator,
+					"Size",
+					UDim2.new(0, 9, 0, 24),
+					0.15
+				})
+
+				Container.ScrollingEnabled = false
+				CallbackFunction(Input)
+			end
+
+			HueBar.InputBegan:Connect(function(Input)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1
+					or Input.UserInputType == Enum.UserInputType.Touch then
+
+					HueDragging = true
+					StartDrag(HueIndicator, UpdateHue, Input)
+				end
+			end)
+
+			SaturationBar.InputBegan:Connect(function(Input)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1
+					or Input.UserInputType == Enum.UserInputType.Touch then
+
+					SaturationDragging = true
+					StartDrag(SaturationIndicator, UpdateSaturation, Input)
+				end
+			end)
+
+			BrightnessBar.InputBegan:Connect(function(Input)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1
+					or Input.UserInputType == Enum.UserInputType.Touch then
+
+					BrightnessDragging = true
+					StartDrag(BrightnessIndicator, UpdateBrightness, Input)
+				end
+			end)
+
+			UserInputService.InputChanged:Connect(function(Input)
+				if Input.UserInputType ~= Enum.UserInputType.MouseMovement
+					and Input.UserInputType ~= Enum.UserInputType.Touch then
+					return
+				end
+
+				if HueDragging then
+					UpdateHue(Input)
+				elseif SaturationDragging then
+					UpdateSaturation(Input)
+				elseif BrightnessDragging then
+					UpdateBrightness(Input)
+				end
+			end)
+
+			UserInputService.InputEnded:Connect(function(Input)
+				if Input.UserInputType ~= Enum.UserInputType.MouseButton1
+					and Input.UserInputType ~= Enum.UserInputType.Touch then
+					return
+				end
+
+				local Changed =
+					HueDragging
+					or SaturationDragging
+					or BrightnessDragging
+
+				HueDragging = false
+				SaturationDragging = false
+				BrightnessDragging = false
+
+				Container.ScrollingEnabled = true
+
+				if Changed then
+					CreateTween({
+						HueIndicator,
+						"Size",
+						UDim2.new(0, 7, 0, 22),
+						0.15
+					})
+
+					CreateTween({
+						SaturationIndicator,
+						"Size",
+						UDim2.new(0, 7, 0, 22),
+						0.15
+					})
+
+					CreateTween({
+						BrightnessIndicator,
+						"Size",
+						UDim2.new(0, 7, 0, 22),
+						0.15
+					})
+
+					ApplyHSV(true, true)
+				end
+			end)
+
+			HueBackground:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateIndicators)
+			SaturationBackground:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateIndicators)
+			BrightnessBackground:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateIndicators)
+
+			if HexInput then
+				HexInput:GetPropertyChangedSignal("Text"):Connect(function()
+					local Text = HexInput.Text:gsub("[^%x]", ""):upper()
+
+					if #Text > 6 then
+						Text = Text:sub(1, 6)
+					end
+
+					local NewText = "#" .. Text
+
+					if HexInput.Text ~= NewText then
+						HexInput.Text = NewText
+					end
+
+					if HexInput.CursorPosition <= 1 then
+						HexInput.CursorPosition = math.max(#HexInput.Text + 1, 2)
+					end
+				end)
+
+				HexInput.Focused:Connect(function()
+					if HexInput.Text:sub(1, 1) ~= "#" then
+						HexInput.Text = "#" .. HexInput.Text:gsub("[^%x]", ""):sub(1, 6)
+					end
+
+					task.defer(function()
+						if HexInput:IsFocused() then
+							HexInput.CursorPosition = math.max(#HexInput.Text + 1, 2)
+						end
+					end)
+				end)
+
+				HexInput.FocusLost:Connect(function()
+					local Color = ParseHex(HexInput.Text)
+
+					if Color then
+						SetColor(Color, true, true)
+					else
+						HexInput.Text = ColorToHex(CurrentColorValue)
+					end
+				end)
+			end
+
+			if RGBInput then
+				RGBInput:GetPropertyChangedSignal("Text"):Connect(function()
+					local Text = RGBInput.Text:gsub("[^%d,]", "")
+					local Parts = {}
+
+					for Part in Text:gmatch("%d+") do
+						if #Parts < 3 then
+							table.insert(Parts, Part:sub(1, 3))
+						end
+					end
+
+					local Clean = table.concat(Parts, ",")
+
+					if RGBInput.Text ~= Clean then
+						RGBInput.Text = Clean
+					end
+				end)
+
+				RGBInput.FocusLost:Connect(function()
+					local Color = ParseRGB(RGBInput.Text)
+
+					if Color then
+						SetColor(Color, true, true)
+					else
+						RGBInput.Text = ColorToRGB(CurrentColorValue)
+					end
+				end)
+			end
+
+			function ColorPicker:Set(Value, DescriptionValue)
+				if type(Value) == "string" and type(DescriptionValue) == "string" then
+					Label:SetTitle(Value)
+					Label:SetDesc(DescriptionValue)
+					return
+				end
+
+				if type(Value) == "string" then
+					local HexColor = ParseHex(Value)
+
+					if HexColor then
+						SetColor(HexColor, true, false)
+						return
+					end
+
+					local BrickColorValue = ParseBrickColor(Value)
+
+					if BrickColorValue then
+						SetColor(BrickColorValue, true, false)
+						return
+					end
+
+					Label:SetTitle(Value)
+					return
+				end
+
+				if typeof(Value) == "Color3" then
+					SetColor(Value, true, false)
+					return
+				end
+
+				if typeof(Value) == "BrickColor" then
+					SetColor(Value.Color, true, false)
+					return
+				end
+
+				if type(Value) == "function" then
+					Callback = Value
+				end
+			end
+
+			function ColorPicker:Get()
+				return GetOutput(CurrentColorValue)
+			end
+
+			function ColorPicker:Callback(...)
+				if not Callback then
+					return
+				end
+
+				local Value, Hex = GetOutput(CurrentColorValue)
+
+				Funcs:InsertCallback(
+					Callback,
+					...
+				)(
+					Value,
+					Hex
+				)
+			end
+
+			function ColorPicker:Visible(Value)
+				Funcs:ToggleVisible(Option, Value)
+
+				if not Value then
+					Expanded = false
+					PickerFrame.Visible = false
+					PickerFrame.Size = UDim2.new(1, 0, 0, 0)
+				end
+
+				Funcs:ToggleVisible(PickerFrame, Value and Expanded)
+			end
+
+			function ColorPicker:Expand(Value)
+				SetExpanded(Value)
+			end
+
+			function ColorPicker:Destroy()
+				Option:Destroy()
+				PickerFrame:Destroy()
+			end
+
+			SetColor(CurrentColorValue, false, false)
+			RefreshRecent()
+
+			task.defer(UpdateIndicators)
+
+			if Flag then
+				table.insert(redzlib.Options, {
+					type = "ColorPicker",
+					Name = Name,
+					Flag = Flag,
+					Default = ColorToHex(CurrentColorValue),
+					func = ColorPicker
+				})
+			end
+
+			return ColorPicker
+		end
 		function Tab:AddDiscordInvite(Configs)
 			local Title = Configs[1] or Configs.Name or Configs.Title or "Discord"
 			local Desc = Configs.Desc or Configs.Description or ""
