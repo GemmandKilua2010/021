@@ -2189,8 +2189,7 @@ function redzlib:MakeWindow(Configs)
 			local DOptions = Configs[2] or Configs.Options or {}
 			local OpDefault = Configs[3] or Configs.Default or "..."
 			local DMultiSelect = Configs.MultiSelect or false
-			local DMultiLine = Configs.MultiLine or false
-			local DMultiOptions = Configs.MultiOptions or {}
+			local DMultiConfig = Configs.MultiConfig or {}
 			local DSearch = Configs.Search or false
 			local OptionRenderer = Configs.OptionRenderer
 			local OnSearch = Configs.OnSearch
@@ -2501,10 +2500,10 @@ function redzlib:MakeWindow(Configs)
 
 			do
 				local Default = type(OpDefault) ~= "table" and {OpDefault} or OpDefault
-				local MultiLine = DMultiLine
+
 				local MultiSelect = DMultiSelect
-				local MultiMax = tonumber(DMultiOptions.Max) or math.huge
-				local MultiMin = tonumber(DMultiOptions.Min) or 0
+				local MultiMax = tonumber(DMultiConfig.Max) or math.huge
+				local MultiMin = tonumber(DMultiConfig.Min) or 0
 
 				MultiMax = math.max(0, MultiMax)
 				MultiMin = math.max(0, MultiMin)
@@ -2513,11 +2512,11 @@ function redzlib:MakeWindow(Configs)
 					MultiMin = MultiMax
 				end
 
-				Selected = MultiSelect and {} or CheckFlag(Flag) and GetFlag(Flag) or Default[1]
-
 				local Options = {}
 
 				if MultiSelect then
+					Selected = {}
+
 					local Saved = CheckFlag(Flag) and GetFlag(Flag) or nil
 
 					if type(Saved) == "table" then
@@ -2526,13 +2525,9 @@ function redzlib:MakeWindow(Configs)
 								Selected[Index] = true
 							end
 						end
-					elseif type(Default) == "table" then
-						for _, Value in pairs(Default) do
-							if type(Value) == "string" then
-								Selected[Value] = true
-							end
-						end
 					end
+				else
+					Selected = CheckFlag(Flag) and GetFlag(Flag) or Default[1]
 				end
 
 				local function GetOptionName(Value, Index)
@@ -2561,13 +2556,8 @@ function redzlib:MakeWindow(Configs)
 				end
 
 				local function CallbackSelected()
-					if MultiSelect then
-						SetFlag(Flag, Selected)
-						Funcs:FireCallback(Callback, Selected)
-					else
-						SetFlag(Flag, Selected and tostring(Selected) or false)
-						Funcs:FireCallback(Callback, Selected)
-					end
+					SetFlag(Flag, Selected)
+					Funcs:FireCallback(Callback, Selected)
 				end
 
 				local function GetSelectedText(Value)
@@ -2593,9 +2583,17 @@ function redzlib:MakeWindow(Configs)
 							end
 						end
 
-						ActiveLabel.Text = #List > 0 and table.concat(List, ", ") or tostring(Default[1] or "...")
+						if #List > 0 then
+							ActiveLabel.Text = table.concat(List, ", ")
+						else
+							ActiveLabel.Text = tostring(Default[1] or "...")
+						end
 					else
-						ActiveLabel.Text = Selected ~= nil and GetSelectedText(Selected) or tostring(Default[1] or "...")
+						if Selected ~= nil then
+							ActiveLabel.Text = GetSelectedText(Selected)
+						else
+							ActiveLabel.Text = tostring(Default[1] or "...")
+						end
 					end
 				end
 
@@ -2614,7 +2612,9 @@ function redzlib:MakeWindow(Configs)
 						CreateTween({
 							Nodes[2],
 							"Size",
-							IsActive and UDim2.fromOffset(4, 14) or UDim2.fromOffset(4, 4),
+							IsActive
+								and UDim2.fromOffset(4, 14)
+								or UDim2.fromOffset(4, 4),
 							0.35
 						})
 
@@ -2686,7 +2686,7 @@ function redzlib:MakeWindow(Configs)
 							end
 
 							Option.Stats = false
-							Selected[Option.Name] = false
+							Selected[Option.Name] = nil
 						else
 							if CurrentCount >= MultiMax then
 								return
@@ -2788,10 +2788,8 @@ function redzlib:MakeWindow(Configs)
 					if Options[Name] then
 						if MultiSelect then
 							Selected[Name] = nil
-						else
-							if Selected == Options[Name].Value then
-								Selected = nil
-							end
+						elseif Selected == Options[Name].Value then
+							Selected = nil
 						end
 
 						Options[Name].nodes[1]:Destroy()
