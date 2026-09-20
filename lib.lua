@@ -1672,12 +1672,18 @@ function redzlib:MakeWindow(Configs)
 	local Minimized, SaveSize, WaitClick
 	local Window, FirstTab = {}, false
 	local KeybindRegistry = {}
+
 	local CloseCallback
 	function Window:Close(Callback)
 		if type(Callback) == "function" then
 			CloseCallback = Callback
 		end
 	end
+	
+	function Window:IsOpen()
+		return ScreenGui.Enabled
+	end
+
 	function Window:CloseBtn()
 		local Dialog = Window:Dialog({
 			Title = "Fechar",
