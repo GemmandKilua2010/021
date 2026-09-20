@@ -2502,7 +2502,7 @@ function redzlib:MakeWindow(Configs)
 			do
 				local Default = type(OpDefault) ~= "table" and {OpDefault} or OpDefault
 				local MultiLine = DMultiLine
-				local MultiSelect = DMultiSelect or MultiLine
+				local MultiSelect = DMultiSelect
 				local MultiMax = tonumber(DMultiOptions.Max) or math.huge
 				local MultiMin = tonumber(DMultiOptions.Min) or 0
 
