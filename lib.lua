@@ -4824,14 +4824,14 @@ function redzlib:MakeWindow(Configs)
 							0.25
 						})
 
-						CreateTween({
+						local Tween = CreateTween({
 							PickerFrame,
 							"Size",
-							UDim2.new(1, 0, 0, 2),
-							0.3
+							UDim2.new(1, 0, 0, 0.1),
+							0.35
 						})
 
-						task.delay(0.3, function()
+						Tween.Completed:Once(function()
 							if not Expanded and PickerFrame.Parent then
 								PickerFrame.Visible = false
 								PickerFrame.Size = UDim2.new(1, 0, 0, 0)
