@@ -1672,12 +1672,21 @@ function redzlib:MakeWindow(Configs)
 	local Minimized, SaveSize, WaitClick
 	local Window, FirstTab = {}, false
 	local KeybindRegistry = {}
+	local CloseCallback
+	function Window:Close(Callback)
+		if type(Callback) == "function" then
+			CloseCallback = Callback
+		end
+	end
 	function Window:CloseBtn()
 		local Dialog = Window:Dialog({
 			Title = "Fechar",
 			Text = "Tem certeza que deseja sair?",
 			Options = {
 				{"Confirm", function()
+					if CloseCallback then
+						CloseCallback()
+					end
 					ScreenGui:Destroy()
 				end},
 				{"Cancel"}
