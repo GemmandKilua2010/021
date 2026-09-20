@@ -2595,9 +2595,7 @@ function redzlib:MakeWindow(Configs)
 
 						ActiveLabel.Text = #List > 0 and table.concat(List, ", ") or tostring(Default[1] or "...")
 					else
-						ActiveLabel.Text = Selected ~= nil
-							and GetSelectedText(Selected)
-							or tostring(Default[1] or "...")
+						ActiveLabel.Text = Selected ~= nil and GetSelectedText(Selected) or tostring(Default[1] or "...")
 					end
 				end
 
@@ -2616,9 +2614,7 @@ function redzlib:MakeWindow(Configs)
 						CreateTween({
 							Nodes[2],
 							"Size",
-							IsActive
-								and UDim2.fromOffset(4, 14)
-								or UDim2.fromOffset(4, 4),
+							IsActive and UDim2.fromOffset(4, 14) or UDim2.fromOffset(4, 4),
 							0.35
 						})
 
@@ -2996,18 +2992,6 @@ function redzlib:MakeWindow(Configs)
 				return Display and Player.DisplayName or Player.Name
 			end
 
-			local function GetThumbnail(Player)
-				local Success, Content = pcall(function()
-					return Players:GetUserThumbnailAsync(
-						Player.UserId,
-						Enum.ThumbnailType.HeadShot,
-						Enum.ThumbnailSize.Size100x100
-					)
-				end)
-
-				return Success and Content or ""
-			end
-
 			local function CreatePlayerData(Player)
 				return {
 					Player = Player,
@@ -3015,7 +2999,7 @@ function redzlib:MakeWindow(Configs)
 					DisplayName = Player.DisplayName,
 					UserName = Player.Name,
 					UserId = Player.UserId,
-					Thumbnail = GetThumbnail(Player)
+					Thumbnail = ""
 				}
 			end
 
@@ -3127,14 +3111,31 @@ function redzlib:MakeWindow(Configs)
 						Position = UDim2.new(0, 8, 0.5, 0),
 						AnchorPoint = Vector2.new(0, 0.5),
 						BackgroundTransparency = 1,
-						Image = Value.Thumbnail or "",
-						ImageTransparency = Value.Thumbnail == "" and 1 or 0
+						Image = "",
+						ImageTransparency = 1
 					})
 
 					Make("Corner", Thumbnail, UDim.new(1, 0))
 
 					NameLabel.Position = UDim2.new(0, 30, 0, 0)
 					NameLabel.Size = UDim2.new(1, -30, 1, 0)
+
+					-- A thumbnail não bloqueia mais o carregamento do player.
+					task.spawn(function()
+						local Success, Content = pcall(function()
+							return Players:GetUserThumbnailAsync(
+								Value.UserId,
+								Enum.ThumbnailType.HeadShot,
+								Enum.ThumbnailSize.Size100x100
+							)
+						end)
+
+						if Success and Content and Thumbnail.Parent then
+							Value.Thumbnail = Content
+							Thumbnail.Image = Content
+							Thumbnail.ImageTransparency = 0
+						end
+					end)
 				end,
 
 				OnSearch = function(SearchText, Value)
@@ -3181,7 +3182,8 @@ function redzlib:MakeWindow(Configs)
 				end
 			})
 
-			-- Carrega os players atuais em lote.
+			-- Primeiro coloca todos os players na lista.
+			-- Nenhuma thumbnail é buscada aqui.
 			local InitialPlayers = {}
 
 			for _, Player in ipairs(Players:GetPlayers()) do
