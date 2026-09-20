@@ -4511,17 +4511,14 @@ function redzlib:MakeWindow(Configs)
 
 			Make("Corner", HueBackground, UDim.new(0.5, 0))
 
-			local HueIndicator = Create("TextLabel", HueBackground, {
+			local HueIndicator = Create("Frame", HueBackground, {
 				Size = UDim2.new(0, 7, 0, 22),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.new(0, 0, 0.5, 0),
-				BackgroundTransparency = 1,
-				Text = "|",
-				TextSize = 18,
-				TextColor3 = Color3.fromRGB(255, 255, 255),
-				ZIndex = 5
+				BackgroundColor3 = Color3.fromRGB(230, 230, 230),
+				BackgroundTransparency = 0.1,
+				ZIndex = 2
 			})
-
 			Make("Corner", HueIndicator)
 
 			local SaturationLabel = Create("TextLabel", PickerContent, {
