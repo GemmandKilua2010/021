@@ -1776,7 +1776,8 @@ function redzlib:MakeWindow(Configs)
 
 	--- 
 	
-	local WindowKeybindEnabled = Configs.Keybind or false
+	local WindowKeybindEnabled = Configs.Keybind ~= false
+	local WindowKeybind = typeof(Keybind) == "EnumItem" and Keybind or Enum.KeyCode[Keybind or "G"]
 	local WindowKeybindCooldown = false
 
 	function Window:EnableKeybind()
@@ -1791,14 +1792,25 @@ function redzlib:MakeWindow(Configs)
 		return WindowKeybindEnabled
 	end
 
+	function Window:SetKeybind(Key)
+		if typeof(Key) == "EnumItem" then
+			WindowKeybind = Key
+		elseif type(Key) == "string" then
+			WindowKeybind = Enum.KeyCode[Key]
+		end
+	end
+
+	function Window:GetKeybind()
+		return WindowKeybind
+	end
+
 	UserInputService.InputBegan:Connect(function(Input, GameProcessed)
 		if GameProcessed then return end
 		if WindowKeybindCooldown then return end
-		
 		if Input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-		if Input.KeyCode ~= Keybind then return end
-
+		if Input.KeyCode ~= WindowKeybind then return end
 		if not WindowKeybindEnabled then return end
+
 		WindowKeybindCooldown = true
 		Window:Visible()
 
