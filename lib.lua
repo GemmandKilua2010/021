@@ -1,6 +1,3 @@
--- CHATGPT TA ACHADO QUE TO USADO SISTEMA ANTIGO
-
-
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
