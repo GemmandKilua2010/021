@@ -903,7 +903,7 @@ local redzlib = {
 	end)(),
 	NotifyConfig = {
 		MaxWidth = 420,
-		MinWidth = 240,
+		MinWidth = 200,
 		Padding = 14,
 		IconSize = 40,
 		TextIconGap = 12,
