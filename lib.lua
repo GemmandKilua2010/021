@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -898,7 +899,36 @@ local redzlib = {
 			["zoomin"] = "rbxassetid://10747384552",
 			["zoomout"] = "rbxassetid://10747384679"
 		}
-	end)()
+	end)(),
+	NotifyConfig = {
+        MaxWidth = 420,
+        MinWidth = 240,
+        Padding = 14,
+        IconSize = 40,
+        TextIconGap = 12,
+        VerticalSpacing = 4,
+        QueueGap = 8,
+
+        DefaultDuration = 4,
+        MaxVisible = 5,
+
+        AnimTime = 0.35,
+        CloseAnimTime = 0.28,
+
+        BackgroundColor = Color3.fromRGB(30, 30, 35),
+        BackgroundTransparency = 0.05,
+
+        StrokeColor = Color3.fromRGB(60, 60, 68),
+
+        TitleColor = Color3.fromRGB(255, 255, 255),
+        TextColor = Color3.fromRGB(200, 200, 205),
+
+        TitleFont = Enum.Font.GothamBold,
+        TextFont = Enum.Font.Gotham,
+
+        TitleSize = 16,
+        TextSize = 14
+    }
 }
 
 local ViewportSize = workspace.CurrentCamera.ViewportSize
@@ -906,6 +936,500 @@ local UIScale = ViewportSize.Y / 450
 
 local Settings = redzlib.Settings
 local Flags = redzlib.Flags
+
+local NotificationActive = {}
+local NotificationQueue = {}
+local NotificationGui = nil
+local NotificationContainer = nil
+local NotificationUIScale = nil
+local NotificationOrder = 0
+local NotificationProcessing = false
+
+local function IsNotificationMobile()
+    return UserInputService.TouchEnabled
+        and not UserInputService.KeyboardEnabled
+        and not UserInputService.MouseEnabled
+end
+
+local function IsNotificationTenFoot()
+    return GuiService:IsTenFootInterface()
+end
+
+local function GetNotificationScale()
+    local Camera = workspace.CurrentCamera
+    if not Camera then
+        return 1
+    end
+
+    local ShortSide = math.min(Camera.ViewportSize.X, Camera.ViewportSize.Y)
+
+    if IsNotificationTenFoot() then
+        return 1.25
+    end
+
+    if IsNotificationMobile() then
+        return math.clamp(ShortSide / 400, 0.85, 1.15)
+    end
+
+    return 1
+end
+
+local function UpdateNotificationBounds()
+    local Container = NotificationContainer
+    if not Container or not Container.Parent then
+        return
+    end
+
+    local Camera = workspace.CurrentCamera
+    if not Camera then
+        return
+    end
+
+    local Config = redzlib.NotifyConfig
+    local PaddingRight = IsNotificationMobile() and 10 or 12
+    local PaddingBottom = IsNotificationMobile() and 35 or 45
+
+    local MaxAllowedWidth = math.max(Camera.ViewportSize.X - (PaddingRight * 2), 100)
+    local Width = math.min(Config.MaxWidth * GetNotificationScale(), MaxAllowedWidth)
+
+    Container.AnchorPoint = Vector2.new(1, 1)
+    Container.Position = UDim2.new(1, -PaddingRight, 1, -PaddingBottom)
+    Container.Size = UDim2.new(0, Width, 1, -(PaddingBottom * 2))
+end
+
+local function EnsureNotificationGui()
+    if NotificationGui and NotificationGui.Parent then
+        NotificationContainer = NotificationGui:FindFirstChild("Container")
+        NotificationUIScale = NotificationGui:FindFirstChildOfClass("UIScale")
+
+        if NotificationContainer then
+            UpdateNotificationBounds()
+            return
+        end
+    end
+
+    local Existing = CoreGui:FindFirstChild("NotificationSystemGui")
+
+    if Existing then
+        local Container = Existing:FindFirstChild("Container")
+
+        if Container then
+            NotificationGui = Existing
+            NotificationContainer = Container
+            NotificationUIScale = Existing:FindFirstChildOfClass("UIScale")
+
+            if not NotificationUIScale then
+                NotificationUIScale = Instance.new("UIScale")
+                NotificationUIScale.Scale = GetNotificationScale()
+                NotificationUIScale.Parent = Existing
+            end
+
+            UpdateNotificationBounds()
+            return
+        end
+
+        Existing:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "NotificationSystemGui"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 1000
+
+    local Success = pcall(function()
+        ScreenGui.Parent = CoreGui
+    end)
+
+    if not Success or ScreenGui.Parent ~= CoreGui then
+        local Player = Players.LocalPlayer
+        if Player then
+            ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+        end
+    end
+
+    NotificationGui = ScreenGui
+
+    local UIScale = Instance.new("UIScale")
+    UIScale.Scale = GetNotificationScale()
+    UIScale.Parent = ScreenGui
+    NotificationUIScale = UIScale
+
+    local Container = Instance.new("Frame")
+    Container.Name = "Container"
+    Container.BackgroundTransparency = 1
+    Container.ClipsDescendants = false
+    Container.Parent = ScreenGui
+    NotificationContainer = Container
+
+    local Layout = Instance.new("UIListLayout")
+    Layout.FillDirection = Enum.FillDirection.Vertical
+    Layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Padding = UDim.new(0, redzlib.NotifyConfig.QueueGap)
+    Layout.Parent = Container
+
+    UpdateNotificationBounds()
+
+    local Camera = workspace.CurrentCamera
+    if Camera then
+        Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            if NotificationUIScale then
+                NotificationUIScale.Scale = GetNotificationScale()
+            end
+
+            UpdateNotificationBounds()
+        end)
+    end
+end
+
+local function CalculateNotificationSize(Title, Text, HasIcon)
+    local Config = redzlib.NotifyConfig
+    local Scale = GetNotificationScale()
+    local Container = NotificationContainer
+
+    local MaxWidth = (Container and Container.AbsoluteSize.X > 0)
+        and Container.AbsoluteSize.X
+        or (Config.MaxWidth * Scale)
+
+    local MinWidth = math.min(Config.MinWidth * Scale, MaxWidth)
+    local Padding = Config.Padding * Scale
+    local IconSize = HasIcon and (Config.IconSize * Scale) or 0
+    local Gap = HasIcon and (Config.TextIconGap * Scale) or 0
+
+    local AvailableTextWidth = math.max(
+        MaxWidth - (Padding * 2) - IconSize - Gap,
+        80
+    )
+
+    local TitleBounds = TextService:GetTextSize(
+        Title or "",
+        Config.TitleSize * Scale,
+        Config.TitleFont,
+        Vector2.new(AvailableTextWidth, math.huge)
+    )
+
+    local TextBounds = TextService:GetTextSize(
+        Text or "",
+        Config.TextSize * Scale,
+        Config.TextFont,
+        Vector2.new(AvailableTextWidth, math.huge)
+    )
+
+    local ContentWidth = math.max(
+        TitleBounds.X,
+        TextBounds.X
+    ) + IconSize + Gap + (Padding * 2)
+
+    local FinalWidth = math.clamp(
+        ContentWidth,
+        MinWidth,
+        MaxWidth
+    )
+
+    local TextBlockHeight =
+        TitleBounds.Y
+        + Config.VerticalSpacing * Scale
+        + TextBounds.Y
+
+    local FinalHeight =
+        math.max(TextBlockHeight, IconSize)
+        + (Padding * 2)
+
+    return FinalWidth, FinalHeight
+end
+
+local function BuildNotification(Data)
+    local Config = redzlib.NotifyConfig
+    local Scale = GetNotificationScale()
+
+    local Title = Data.Title or "Notificação"
+    local Text = Data.Text or ""
+    local Icon = Data.Icon
+    local HasIcon = Icon ~= nil and Icon ~= ""
+
+    local Width, Height = CalculateNotificationSize(
+        Title,
+        Text,
+        HasIcon
+    )
+
+    local Padding = Config.Padding * Scale
+
+    local Slot = Instance.new("Frame")
+    Slot.Name = "Slot"
+    Slot.BackgroundTransparency = 1
+    Slot.ClipsDescendants = true
+    Slot.Size = UDim2.new(0, Width, 0, Height)
+
+    NotificationOrder = NotificationOrder - 1
+    Slot.LayoutOrder = NotificationOrder
+
+    local Card = Instance.new("Frame")
+    Card.Name = "Card"
+    Card.Size = UDim2.new(1, 0, 1, 0)
+    Card.BackgroundColor3 = Config.BackgroundColor
+    Card.BackgroundTransparency = 1
+    Card.BorderSizePixel = 0
+    Card.ClipsDescendants = true
+    Card.Parent = Slot
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 12)
+    Corner.Parent = Card
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Config.StrokeColor
+    Stroke.Thickness = 1
+    Stroke.Transparency = 1
+    Stroke.Parent = Card
+
+    local IconImage
+
+    if HasIcon then
+        IconImage = Instance.new("ImageLabel")
+        IconImage.BackgroundTransparency = 1
+        IconImage.Image = Icon
+        IconImage.Size = UDim2.new(
+            0,
+            Config.IconSize * Scale,
+            0,
+            Config.IconSize * Scale
+        )
+        IconImage.Position = UDim2.new(0, Padding, 0.5, 0)
+        IconImage.AnchorPoint = Vector2.new(0, 0.5)
+        IconImage.ImageTransparency = 1
+        IconImage.Parent = Card
+    end
+
+    local TextOffsetX =
+        Padding
+        + (HasIcon and (
+            Config.IconSize * Scale
+            + Config.TextIconGap * Scale
+        ) or 0)
+
+    local TextWidth = Width - TextOffsetX - Padding
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Font = Config.TitleFont
+    TitleLabel.TextSize = Config.TitleSize * Scale
+    TitleLabel.TextColor3 = Config.TitleColor
+    TitleLabel.TextTransparency = 1
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.TextYAlignment = Enum.TextYAlignment.Top
+    TitleLabel.TextWrapped = true
+    TitleLabel.Text = Title
+    TitleLabel.Position = UDim2.new(0, TextOffsetX, 0, Padding)
+    TitleLabel.Size = UDim2.new(0, TextWidth, 0, 0)
+    TitleLabel.AutomaticSize = Enum.AutomaticSize.Y
+    TitleLabel.Parent = Card
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Font = Config.TextFont
+    TextLabel.TextSize = Config.TextSize * Scale
+    TextLabel.TextColor3 = Config.TextColor
+    TextLabel.TextTransparency = 1
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TextLabel.TextYAlignment = Enum.TextYAlignment.Top
+    TextLabel.TextWrapped = true
+    TextLabel.Text = Text
+    TextLabel.Position = UDim2.new(
+        0,
+        TextOffsetX,
+        0,
+        Padding
+            + Config.TitleSize * Scale
+            + Config.VerticalSpacing * Scale
+    )
+    TextLabel.Size = UDim2.new(0, TextWidth, 0, 0)
+    TextLabel.AutomaticSize = Enum.AutomaticSize.Y
+    TextLabel.Parent = Card
+
+    return Slot, Card, {
+        Icon = IconImage,
+        Title = TitleLabel,
+        Text = TextLabel,
+        Stroke = Stroke
+    }
+end
+
+local function AnimateNotificationIn(Slot, Card, Parts)
+    local Config = redzlib.NotifyConfig
+
+    local TweenInfoIn = TweenInfo.new(
+        Config.AnimTime,
+        Enum.EasingStyle.Quint,
+        Enum.EasingDirection.Out
+    )
+
+    Card.Position = UDim2.new(1, 60, 0, 0)
+    Slot.Parent = NotificationContainer
+
+    TweenService:Create(Card, TweenInfoIn, {
+        BackgroundTransparency = Config.BackgroundTransparency,
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+
+    TweenService:Create(Parts.Stroke, TweenInfoIn, {
+        Transparency = 0.4
+    }):Play()
+
+    TweenService:Create(Parts.Title, TweenInfoIn, {
+        TextTransparency = 0
+    }):Play()
+
+    TweenService:Create(Parts.Text, TweenInfoIn, {
+        TextTransparency = 0.1
+    }):Play()
+
+    if Parts.Icon then
+        TweenService:Create(Parts.Icon, TweenInfoIn, {
+            ImageTransparency = 0
+        }):Play()
+    end
+end
+
+local function RemoveActiveNotification(Slot)
+    for Index, ActiveSlot in ipairs(NotificationActive) do
+        if ActiveSlot == Slot then
+            table.remove(NotificationActive, Index)
+            break
+        end
+    end
+end
+
+local function AnimateNotificationOut(Slot, Card, Parts, Callback)
+    local Config = redzlib.NotifyConfig
+
+    local TweenInfoOut = TweenInfo.new(
+        Config.CloseAnimTime,
+        Enum.EasingStyle.Quint,
+        Enum.EasingDirection.In
+    )
+
+    local CollapseInfo = TweenInfo.new(
+        Config.CloseAnimTime,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.In
+    )
+
+    TweenService:Create(Card, TweenInfoOut, {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, 60, 0, 0)
+    }):Play()
+
+    TweenService:Create(Parts.Stroke, TweenInfoOut, {
+        Transparency = 1
+    }):Play()
+
+    TweenService:Create(Parts.Title, TweenInfoOut, {
+        TextTransparency = 1
+    }):Play()
+
+    TweenService:Create(Parts.Text, TweenInfoOut, {
+        TextTransparency = 1
+    }):Play()
+
+    if Parts.Icon then
+        TweenService:Create(Parts.Icon, TweenInfoOut, {
+            ImageTransparency = 1
+        }):Play()
+    end
+
+    task.delay(Config.CloseAnimTime * 0.4, function()
+        if not Slot or not Slot.Parent then
+            if Callback then
+                Callback()
+            end
+            return
+        end
+
+        local CollapseTween = TweenService:Create(Slot, CollapseInfo, {
+            Size = UDim2.new(
+                Slot.Size.X.Scale,
+                Slot.Size.X.Offset,
+                0,
+                0
+            )
+        })
+
+        CollapseTween.Completed:Connect(function()
+            if Slot then
+                Slot:Destroy()
+            end
+
+            if Callback then
+                Callback()
+            end
+        end)
+
+        CollapseTween:Play()
+    end)
+end
+
+local function ProcessNotificationQueue()
+    if NotificationProcessing then
+        return
+    end
+
+    NotificationProcessing = true
+
+    while #NotificationActive < redzlib.NotifyConfig.MaxVisible
+        and #NotificationQueue > 0 do
+
+        local Data = table.remove(NotificationQueue, 1)
+
+        if not Data then
+            break
+        end
+
+        EnsureNotificationGui()
+
+        if not NotificationContainer
+            or not NotificationContainer.Parent then
+            break
+        end
+
+        local Slot, Card, Parts = BuildNotification(Data)
+
+        table.insert(NotificationActive, Slot)
+
+        AnimateNotificationIn(
+            Slot,
+            Card,
+            Parts
+        )
+
+        local Duration =
+            Data.Duration
+            or redzlib.NotifyConfig.DefaultDuration
+
+        task.delay(Duration, function()
+            if not Slot or not Slot.Parent then
+                RemoveActiveNotification(Slot)
+                task.defer(ProcessNotificationQueue)
+                return
+            end
+
+            AnimateNotificationOut(
+                Slot,
+                Card,
+                Parts,
+                function()
+                    RemoveActiveNotification(Slot)
+                    task.defer(ProcessNotificationQueue)
+                end
+            )
+        end)
+    end
+
+    NotificationProcessing = false
+end
 
 local SetProps, SetChildren, InsertTheme, Create do
 	InsertTheme = function(Instance, Type)
@@ -1820,6 +2344,18 @@ function redzlib:MakeWindow(Configs)
 	end)
 
 	--- 
+
+	function Window:Notify(Data)
+		EnsureNotificationGui()
+		table.insert(NotificationQueue, {
+			Title = Data.Title or "Notificação",
+			Text = Data.Text or "",
+			Icon = (Data.Icon and Data.Icon ~= "") and Data.Icon or nil,
+			Duration = Data.Duration or redzlib.NotifyConfig.DefaultDuration
+		})
+
+		task.defer(ProcessNotificationQueue)
+	end
 
 	function Window:AddMinimizeButton(Configs)
 		local Button = MakeDrag(Create("ImageButton", ScreenGui, {
