@@ -1569,7 +1569,8 @@ function redzlib:MakeWindow(Configs)
 		Name = "Container",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		ClipsDescendants = false
+		ClipsDescendants = false,
+		ZIndex = 100
 	})
 
 	Create("UIListLayout", NotificationContainer, {
@@ -2038,7 +2039,8 @@ function redzlib:MakeWindow(Configs)
 			Size = UDim2.fromOffset(Width, Height),
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
-			LayoutOrder = NotificationOrder
+			LayoutOrder = NotificationOrder,
+			ZIndex = 100
 		})
 
 		local Card = Create("Frame", Slot, {
@@ -2047,7 +2049,8 @@ function redzlib:MakeWindow(Configs)
 			BackgroundColor3 = Config.BackgroundColor,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			ClipsDescendants = true
+			ClipsDescendants = true,
+			ZIndex = 100
 		})
 
 		Make("Corner", Card, UDim.new(0, 12))
