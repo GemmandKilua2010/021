@@ -1567,20 +1567,17 @@ function redzlib:MakeWindow(Configs)
 
 	local NotificationContainer = Create("Frame", NotificationHolder, {
 		Name = "Container",
-		Size = UDim2.fromOffset(redzlib.NotifyConfig.MaxWidth, 0),
-		Position = UDim2.new(1, -12, 1, -45),
-		AnchorPoint = Vector2.new(1, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ClipsDescendants = false
-	}, {
-		Create("UIListLayout", {
-			FillDirection = Enum.FillDirection.Vertical,
-			HorizontalAlignment = Enum.HorizontalAlignment.Right,
-			VerticalAlignment = Enum.VerticalAlignment.Bottom,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, redzlib.NotifyConfig.QueueGap)
-		})
+	})
+
+	Create("UIListLayout", NotificationContainer, {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, redzlib.NotifyConfig.QueueGap)
 	})
 	
 	local TopBar = Create("Frame", Components, {
@@ -1929,7 +1926,12 @@ function redzlib:MakeWindow(Configs)
 			MaxAllowedWidth
 		)
 
-		NotificationContainer.Size = UDim2.fromOffset(Width, 0)
+		NotificationContainer.Size = UDim2.new(
+			0,
+			Width,
+			1,
+			-(PaddingBottom * 2)
+		)
 
 		NotificationContainer.Position = UDim2.new(
 			1,
@@ -1949,21 +1951,27 @@ function redzlib:MakeWindow(Configs)
 		local Config = redzlib.NotifyConfig
 		local Scale = GetNotificationScale()
 
-		local MaxWidth = Config.MaxWidth * Scale
-		local MinWidth = math.min(Config.MinWidth * Scale, MaxWidth)
+		local MaxWidth = (NotificationContainer and NotificationContainer.AbsoluteSize.X > 0)
+			and NotificationContainer.AbsoluteSize.X
+			or (Config.MaxWidth * Scale)
+
+		local MinWidth = math.min(
+			Config.MinWidth * Scale,
+			MaxWidth
+		)
 
 		local Padding = Config.Padding * Scale
 
 		local IconSize = HasIcon
-			and Config.IconSize * Scale
+			and (Config.IconSize * Scale)
 			or 0
 
 		local Gap = HasIcon
-			and Config.TextIconGap * Scale
+			and (Config.TextIconGap * Scale)
 			or 0
 
 		local AvailableTextWidth = math.max(
-			MaxWidth - Padding * 2 - IconSize - Gap,
+			MaxWidth - (Padding * 2) - IconSize - Gap,
 			80
 		)
 
@@ -1981,10 +1989,11 @@ function redzlib:MakeWindow(Configs)
 			Vector2.new(AvailableTextWidth, math.huge)
 		)
 
-		local ContentWidth = math.max(
-			TitleBounds.X,
-			TextBounds.X
-		) + IconSize + Gap + Padding * 2
+		local ContentWidth =
+			math.max(TitleBounds.X, TextBounds.X)
+			+ IconSize
+			+ Gap
+			+ (Padding * 2)
 
 		local FinalWidth = math.clamp(
 			ContentWidth,
@@ -1999,7 +2008,7 @@ function redzlib:MakeWindow(Configs)
 
 		local FinalHeight =
 			math.max(TextBlockHeight, IconSize)
-			+ Padding * 2
+			+ (Padding * 2)
 
 		return FinalWidth, FinalHeight
 	end
